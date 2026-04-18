@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>관리자 패널 — 감염병 모의훈련</title>
+<style>
+  :root {
+    --primary: #1a3a5c;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --border: #d1dbe8;
+    --text: #1e2a38;
+    --muted: #6b7c93;
+    --radius: 10px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* ── 로그인 화면 ── */
+  #screen-login {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 60%, #1a5276 100%);
+  }
+  .login-card {
+    background: white; border-radius: 18px; padding: 48px 40px;
+    width: 420px; max-width: 95vw; box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+  }
+  .login-logo { text-align: center; margin-bottom: 32px; }
+  .login-logo .icon { font-size: 52px; display: block; margin-bottom: 10px; }
+  .login-logo h1 { font-size: 20px; font-weight: 700; color: var(--primary); line-height: 1.4; }
+  .login-logo p { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .form-group { margin-bottom: 18px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+  .form-group input {
+    width: 100%; padding: 12px 14px; border: 2px solid var(--border); border-radius: 8px;
+    font-size: 15px; font-family: inherit; color: var(--text); transition: border-color 0.2s;
+  }
+  .form-group input:focus { outline: none; border-color: var(--primary); }
+  .btn-login {
+    width: 100%; padding: 14px; background: var(--primary); color: white;
+    border: none; border-radius: 10px; font-size: 16px; font-weight: 700;
+    cursor: pointer; font-family: inherit; margin-top: 6px; transition: background 0.2s;
+  }
+  .btn-login:hover { background: #244f7a; }
+  .login-error {
+    background: #fdecea; border-left: 4px solid #e74c3c; border-radius: 6px;
+    padding: 10px 14px; font-size: 13px; color: #c0392b;
+    margin-top: 14px; display: none;
+  }
+  .login-hint { font-size: 12px; color: var(--muted); text-align: center; margin-top: 16px; }
+
+  /* ── 관리자 패널 ── */
+  #screen-admin { display: none; min-height: 100vh; background: var(--bg); }
+  .admin-header {
+    background: var(--primary); color: white; padding: 0 24px;
+    display: flex; align-items: center; gap: 16px; height: 64px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .admin-header h1 { font-size: 18px; font-weight: 700; flex: 1; }
+  .btn-admin-back {
+    padding: 8px 16px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+    color: white; border-radius: 8px; font-size: 13px; font-weight: 700;
+    cursor: pointer; font-family: inherit; transition: all 0.2s;
+  }
+  .btn-admin-back:hover { background: rgba(255,255,255,0.25); }
+  .btn-logout {
+    padding: 8px 16px; background: rgba(231,76,60,0.25); border: 1px solid rgba(231,76,60,0.4);
+    color: white; border-radius: 8px; font-size: 13px; font-weight: 700;
+    cursor: pointer; font-family: inherit; transition: all 0.2s;
+  }
+  .btn-logout:hover { background: rgba(231,76,60,0.45); }
+  .admin-body { display: flex; min-height: calc(100vh - 64px); }
+  .admin-sidebar {
+    width: 260px; flex-shrink: 0; background: white; border-right: 1px solid var(--border);
+    padding: 20px 0; overflow-y: auto; max-height: calc(100vh - 64px); position: sticky; top: 64px;
+  }
+  .admin-sidebar h3 { padding: 0 20px 12px; font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: 0.05em; }
+  .admin-scenario-item {
+    display: flex; align-items: center; gap: 10px; padding: 11px 20px;
+    font-size: 14px; cursor: pointer; border: none; background: none;
+    width: 100%; text-align: left; font-family: inherit; color: var(--text); transition: background 0.15s;
+  }
+  .admin-scenario-item:hover { background: #f0f4f8; }
+  .admin-scenario-item.active { background: #eaf2ff; color: var(--primary); font-weight: 700; }
+  .admin-scenario-item .del-btn {
+    margin-left: auto; opacity: 0; color: #e74c3c; background: none; border: none;
+    cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 4px;
+    transition: opacity 0.15s; font-family: inherit;
+  }
+  .admin-scenario-item:hover .del-btn { opacity: 1; }
+  .btn-add-scenario {
+    display: block; width: calc(100% - 40px); margin: 12px 20px 0;
+    padding: 10px; background: var(--primary); color: white; border: none;
+    border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
+    transition: background 0.2s;
+  }
+  .btn-add-scenario:hover { background: #244f7a; }
+  .admin-sidebar-footer { padding: 16px 20px 0; margin-top: 20px; border-top: 1px solid var(--border); }
+  .admin-edit-area { flex: 1; padding: 28px; overflow-y: auto; max-height: calc(100vh - 64px); }
+  .admin-section {
+    background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 24px; margin-bottom: 20px;
+  }
+  .admin-section h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+  .admin-field { margin-bottom: 14px; }
+  .admin-field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+  .admin-field input, .admin-field textarea, .admin-field select {
+    width: 100%; padding: 9px 12px; border: 2px solid var(--border); border-radius: 8px;
+    font-size: 14px; font-family: inherit; color: var(--text); transition: border-color 0.2s;
+  }
+  .admin-field input:focus, .admin-field textarea:focus { outline: none; border-color: var(--primary); }
+  .admin-field textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+  .admin-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .admin-phase-section {
+    border: 1.5px solid var(--border); border-radius: 8px; margin-bottom: 12px; overflow: hidden;
+  }
+  .admin-phase-header {
+    padding: 12px 16px; background: #f7f9fc; display: flex; align-items: center; gap: 10px;
+    font-size: 14px; font-weight: 700; cursor: pointer; user-select: none;
+  }
+  .admin-phase-header:hover { background: #eaf2ff; }
+  .admin-phase-header .toggle-icon { margin-left: auto; font-size: 12px; color: var(--muted); }
+  .admin-phase-body { padding: 16px; display: none; border-top: 1px solid var(--border); }
+  .admin-phase-body.open { display: block; }
+  .admin-role-section { background: #f7f9fc; border-radius: 8px; padding: 14px; margin-top: 12px; }
+  .admin-role-section h4 { font-size: 13px; font-weight: 700; margin-bottom: 10px; color: var(--primary); }
+  .btn-admin-save {
+    padding: 11px 28px; background: var(--primary); color: white; border: none;
+    border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+    margin-right: 10px; transition: background 0.2s;
+  }
+  .btn-admin-save:hover { background: #244f7a; }
+  .btn-admin-danger {
+    padding: 11px 20px; background: white; color: #e74c3c; border: 2px solid #e74c3c;
+    border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+    transition: all 0.2s;
+  }
+  .btn-admin-danger:hover { background: #c0392b; color: white; }
+  .admin-empty { text-align: center; color: var(--muted); padding: 60px 40px; }
+  .admin-empty .icon { font-size: 48px; display: block; margin-bottom: 12px; }
+
+  /* 키워드 태그 */
+  .kw-admin-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #eaf2ff; color: var(--primary); border-radius: 4px;
+    padding: 3px 6px 3px 9px; margin: 2px; font-size: 12px; font-weight: 600;
+  }
+  .kw-admin-tag button {
+    background: none; border: none; cursor: pointer; color: var(--primary);
+    font-size: 14px; font-weight: 700; padding: 0 2px; line-height: 1;
+    opacity: 0.55; transition: opacity 0.15s;
+  }
+  .kw-admin-tag button:hover { opacity: 1; color: #c0392b; }
+  .kw-admin-wrap {
+    display: flex; flex-wrap: wrap; align-items: center; min-height: 28px; padding: 4px;
+    border: 2px solid var(--border); border-radius: 8px; background: white; margin-bottom: 6px; gap: 2px;
+  }
+  .kw-admin-input {
+    flex: 1; min-width: 120px; padding: 5px 10px; border: 2px solid var(--border);
+    border-radius: 6px; font-size: 12px; font-family: inherit; outline: none; transition: border-color 0.2s;
+  }
+  .kw-admin-input:focus { border-color: var(--primary); }
+  .role-checkbox-group {
+    display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 12px;
+    background: #f7f9fc; border: 1.5px solid var(--border); border-radius: 8px; margin-bottom: 12px;
+  }
+  .role-checkbox-label { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer; user-select: none; }
+
+  /* 비밀번호 변경 */
+  .pw-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .pw-section label { font-size: 12px; font-weight: 600; color: var(--muted); display: block; margin-bottom: 5px; }
+  .pw-row { display: flex; gap: 8px; }
+  .pw-row input {
+    flex: 1; padding: 8px 12px; border: 2px solid var(--border);
+    border-radius: 8px; font-size: 13px; font-family: inherit;
+  }
+  .pw-row input:focus { outline: none; border-color: var(--primary); }
+  .btn-pw-change {
+    padding: 8px 14px; background: #2c3e50; color: white; border: none;
+    border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+
+  /* 조 수 설정 */
+  .group-count-row { display: flex; align-items: center; gap: 12px; margin: 8px 0 4px; }
+  .btn-group-count {
+    width: 32px; height: 32px; border-radius: 8px; border: 2px solid var(--border);
+    background: white; font-size: 18px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; color: var(--primary);
+    transition: all 0.15s; line-height: 1;
+  }
+  .btn-group-count:hover { border-color: var(--primary); background: #f0f6ff; }
+  .btn-group-count:disabled { color: #ccc; border-color: #eee; cursor: not-allowed; background: #fafafa; }
+  #admin-group-count-display { font-size: 20px; font-weight: 700; color: var(--primary); min-width: 52px; text-align: center; }
+  .group-count-hint { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* 토스트 */
+  .saved-toast {
+    position: fixed; bottom: 24px; right: 24px; background: #27ae60; color: white;
+    border-radius: 10px; padding: 12px 22px; font-size: 14px; font-weight: 700;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2); z-index: 9999;
+    animation: slideUp 0.3s ease; display: none;
+  }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Firebase 연결 상태 */
+  .firebase-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; padding: 4px 10px; border-radius: 20px;
+    background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.85);
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #aaa; display: inline-block;
+  }
+  .status-dot.online { background: #2ecc71; }
+  .status-dot.offline { background: #e74c3c; }
+
+  @media (max-width: 768px) {
+    .admin-body { flex-direction: column; }
+    .admin-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); padding: 14px 0; position: relative; top: 0; max-height: none; }
+    .admin-edit-area { max-height: none; padding: 16px; }
+    .admin-field-row { grid-template-columns: 1fr; }
+    .admin-header { padding: 12px 16px; }
+    .admin-header h1 { font-size: 15px; }
+  }
+  @media (max-width: 480px) {
+    .admin-header h1 { font-size: 13px; }
+    .btn-admin-back { padding: 6px 12px; font-size: 12px; }
+    .btn-admin-save, .btn-admin-danger { width: 100%; margin-left: 0; margin-top: 8px; font-size: 14px; }
+    .saved-toast { bottom: 12px; right: 12px; left: 12px; text-align: center; }
+    .login-card { padding: 32px 20px; }
+  }
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════════════════ 로그인 화면 ═══════════════════════════ -->
+<div id="screen-login">
+  <div class="login-card">
+    <div class="login-logo">
+      <span class="icon">🔧</span>
+      <h1>관리자 패널</h1>
+      <p>감염병 모의훈련 시뮬레이션 — 시나리오 관리</p>
+    </div>
+    <div class="form-group">
+      <label>관리자 비밀번호</label>
+      <input type="password" id="login-pw" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-login" onclick="doLogin()">로그인</button>
+    <div class="login-error" id="login-error">비밀번호가 틀렸습니다. 다시 시도하세요.</div>
+    <p class="login-hint">이 페이지는 관리자 전용입니다.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ 관리자 패널 ═══════════════════════════ -->
+<div id="screen-admin">
+  <div class="admin-header">
+    <h1>🔧 관리자 패널 — 시나리오 편집</h1>
+    <span class="firebase-status" id="firebase-status"><span class="status-dot" id="status-dot"></span><span id="status-text">연결 중...</span></span>
+    <a class="btn-admin-back" href="index.html">← 메인으로</a>
+    <button class="btn-logout" onclick="doLogout()">로그아웃</button>
+  </div>
+  <div class="admin-body">
+    <div class="admin-sidebar">
+      <h3>시나리오 목록</h3>
+      <div id="admin-scenario-list"></div>
+      <button class="btn-add-scenario" onclick="addNewScenario()">+ 새 시나리오 추가</button>
+      <div class="admin-sidebar-footer">
+        <div class="pw-section" style="margin-top:0;padding-top:0;border-top:none">
+          <label>🏷️ 훈련 조 수 설정</label>
+          <div class="group-count-row">
+            <button class="btn-group-count" onclick="changeGroupCount(-1)">−</button>
+            <span id="admin-group-count-display">4조</span>
+            <button class="btn-group-count" onclick="changeGroupCount(1)">+</button>
+          </div>
+          <p class="group-count-hint">현재 <strong id="admin-group-count-num">4</strong>개 조로 운영 (최대 9조)</p>
+        </div>
+        <div class="pw-section">
+          <label>🔑 관리자 비밀번호 변경</label>
+          <div class="pw-row">
+            <input type="password" id="new-pw" placeholder="새 비밀번호 (4자 이상)">
+            <button class="btn-pw-change" onclick="changeAdminPassword()">변경</button>
+          </div>
+        </div>
+        <button class="btn-admin-danger" style="margin-top:12px;margin-left:0;width:100%;font-size:13px" onclick="resetToDefault()">기본값으로 초기화</button>
+      </div>
+    </div>
+    <div class="admin-edit-area" id="admin-edit-area">
+      <div class="admin-empty">
+        <span class="icon">📋</span>
+        <p>좌측에서 시나리오를 선택하거나<br>새 시나리오를 추가하세요.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="saved-toast" id="saved-toast">✅ 저장되었습니다</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  FIREBASE INIT
+// ═══════════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyC8KDLecYY5kNGsXxflRgP8-PP_S-DIU54",
+  authDomain: "infectious-disease-simul-e658f.firebaseapp.com",
+  databaseURL: "https://infectious-disease-simul-e658f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "infectious-disease-simul-e658f",
+  storageBucket: "infectious-disease-simul-e658f.firebasestorage.app",
+  messagingSenderId: "746776461566",
+  appId: "1:746776461566:web:181f03437230510d66a5af"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// Firebase 연결 상태 표시
+db.ref('.info/connected').on('value', snap => {
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-text');
+  if (snap.val()) {
+    dot.className = 'status-dot online';
+    txt.textContent = 'Firebase 연결됨';
+  } else {
+    dot.className = 'status-dot offline';
+    txt.textContent = 'Firebase 오프라인';
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  DEFAULT SCENARIO DATA
+// ═══════════════════════════════════════════════════════
+const DEFAULT_SCENARIOS = [
+  {
+    id: 'influenza',
+    name: '인플루엔자',
+    emoji: '🤧',
+    color: '#1a3a5c',
+    description: '계절성 인플루엔자 유증상자 발견부터 집단 유행까지 3단계 대응',
+    phases: [
+      {
+        id: 1, title: '유증상자 발견', emoji: '🛑', color: '#e67e22', colorClass: 'phase-1-color',
+        activeRoles: ['담임교사', '보건(담당)교사'],
+        date: '3월 5일',
+        situation: 'A광역시 B구에 소재한 ○○중학교는 총 24학급이며 1개 반에 25명의 학생으로 구성되어 있다. 학교 건물은 서관과 동관 두 개의 동으로 되어 있으며, 서관은 5층 건물로 1층에는 교장실, 교무실, 보건실, 휴게실, 도서관, 1학년 교실이 있고, 2층에는 2학년 교실과 음악실, 3층부터 4층까지는 2·3학년 교실, 5층은 강당으로 구성되어 있다. 동관은 단층으로 체육관이다. 3월 5일 ○○중학교 1학년 6반에서 진한이가 담임교사에게 고열과 심한 기침 및 가슴 통증을 호소하였다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '진한이가 고열·심한 기침·가슴 통증을 호소하고 있습니다. 담임교사로서 무엇을 해야 할까요?', answer: '① 보건교사에게 유선으로 진한이의 상태를 정확하게 전달한다.\n② 교실 환기를 실시하고, 진한이와 접촉한 학생들에게 손을 씻도록 하며 오염된 손으로 눈·코·입을 만지지 말 것, 재채기나 기침 시 옷소매로 가리도록 지도한다.\n③ 교실에 비치된 마스크를 진한이와 교사가 함께 착용하고, 진한이와 직접 동행하여 보건실로 이동한다. (담임교사가 임신부 등 고위험군일 경우 교무부장에게 연락하여 이동 담당 교사 지정을 요청한다.)\n④ 보건교사의 판단에 따라 진한이를 교내 일시적 관찰실에서 보호·관찰한다. 교무부장에게 기타 학생들의 수업 진행 등 관리를 요청한다.\n⑤ 진한이의 부모님에게 연락하여 근처 병원에서 진료를 받을 수 있도록 안내한다.', keywords: ['보건실 연락', '환기·위생지도', '마스크 동행', '일시적 관찰실', '학부모 안내'] },
+          '보건(담당)교사': { prompt: '담임교사와 진한이가 보건실에 도착했습니다. 보건교사로서 어떻게 조치해야 할까요?', answer: '① 교사와 진한이가 보건실에 도착한 즉시 손을 씻도록 요청한다.\n② 보건교사는 마스크를 착용하고, 체온 측정과 더불어 환자의 증상과 징후를 관찰한 후 감염병이 의심되는지를 확인한다.\n③ 진한이가 의료기관 진료를 받지 않았음을 확인하고, 담임교사에게 보호자에게 연락하여 의료기관 진료를 받도록 안내할 것을 요청한다.\n④ 일시적 관찰이 필요하므로 교무부장에게 연락하여 격리 담당 교사 결정을 요청한다.\n⑤ 진한이를 일시적 관찰실로 이동시키고, 부모님이 올 때까지 일시적 관찰실에서 보호·관찰하며 담당 교사를 통해 진한이의 상태를 주기적으로 확인한다.\n⑥ \'일시적 관찰실 출입 금지\' 안내판을 부착한다.', keywords: ['손씻기', '증상확인', '진료권고', '격리담당 요청', '관찰실 이동', '출입금지 부착'] }
+        }
+      },
+      {
+        id: 2, title: '확진자 발생 및 능동감시', emoji: '🚨', color: '#c0392b', colorClass: 'phase-2-color',
+        activeRoles: ['담임교사', '보건(담당)교사', '교장/교감', '교육(지원)청'],
+        date: '3월 6일',
+        situation: '3월 6일 1학년 6반 담임교사는 결석한 진한이의 부모님에게서, 진한이가 인플루엔자(유행성 독감)로 확진 받고 응급실에서 치료를 받게 되었다는 사실을 통보받았다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '진한이가 인플루엔자로 확진되었다는 통보를 받았습니다. 담임교사로서 무엇을 해야 할까요?', answer: '① 진한이의 증상이 안정될 때까지 치료를 받으며 집에서 휴식을 취하도록 보호자에게 관련 행정조치를 안내한다.\n② 반 학생들에게 인플루엔자에 대한 예방 교육을 실시한다.\n③ 진한이의 반과 같은 층을 사용하는 1학년 담임교사로서 능동감시를 실시한다. — 결석·조퇴·지각한 학생의 사유를 확인하고 인플루엔자 의심증상 발생 여부를 조사하며, 매일 1회 (의심)환자 발생 여부를 보건교사에게 통보한다.\n④ 전체 담임교사: 예방수칙 및 가정통신문을 보건교사로부터 제공받아 학생들에게 교육하고 안내한다.', keywords: ['가정내 휴식안내', '예방교육', '능동감시(사유확인)', '일일 보고', '가통 배부'] },
+          '보건(담당)교사': { prompt: '인플루엔자 확진자가 발생했습니다. 보건교사로서 어떤 행정 보고와 조치를 취해야 할까요?', answer: '① 나이스(NEIS)의 [보건/감염병 환자 관리] - [감염병 환자 등록]에 환자 발생을 등록한다.\n② 진한이와 같은 반에 보건학적 고위험군 학생(만성질환자·면역저하자·임신부 등)이 있는지 확인한다.\n③ 능동감시 대상(진한이와 같은 층을 사용하는 학급 전체)을 파악하고 학교장에게 보고한다.\n④ 인플루엔자에 대한 예방 교육 자료와 가정통신문을 기안하여 담임교사에게 배부를 요청한다.', keywords: ['NEIS 등록', '고위험군 확인', '능동감시 보고', '교육자료·가통 기안'] },
+          '교장/교감': { prompt: '보건교사로부터 인플루엔자 확진 발생을 보고받았습니다. 학교장으로서 어떤 지시를 내려야 할까요?', answer: '① 발생감시팀에게 추가 환자 파악을 위한 능동감시 실시를 지시하고, 그 결과를 보건교사에게 통보하도록 요청한다.', keywords: ['능동감시 지시', '보고 체계 가동'] },
+          '교육(지원)청': { prompt: '관내 학교에서 인플루엔자 확진자가 발생했습니다. 교육청으로서 무엇을 해야 할까요?', answer: '① 진한이의 학교 이외의 관내 다른 학교에서의 인플루엔자 발생 신고 여부를 확인한다.\n② 감염병 유행 시 필요한 행정조치에 대해 대비한다.', keywords: ['타 학교 발생 확인', '행정조치 대비'] }
+        }
+      },
+      {
+        id: 3, title: '교내 집단 유행 발생', emoji: '💥', color: '#8e44ad', colorClass: 'phase-3-color',
+        activeRoles: ['담임교사', '보건(담당)교사', '행정실', '교장/교감', '교육(지원)청'],
+        date: '3월 5일 ~ 3월 26일',
+        situation: '인플루엔자로 치료 중인 진한이의 담임교사 및 ○○중학교 선생님들은 보건교사의 요청에 따라 다른 학생들을 능동감시 한 결과, 3월 5일부터 3월 26일 사이에 같은 반 학생 5명에게도 고열과 심한 기침 등의 증세가 있음을 확인하였고, 1학년 6반과 같은 층에 있는 1학년 7반 3명, 1학년 8반 3명, 도서관을 이용했던 9명 등, 20명의 학생에게서 고열과 심한 기침, 콧물 재채기 등의 증상이 발생하였음을 확인하였다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '인플루엔자 의심 환자가 반 내외에서 무더기로 발생했습니다. 담임교사로서 무엇을 해야 할까요?', answer: '① 나이스(NEIS)의 [보건/감염병 환자 관리] - [감염병 환자 등록]에 환자 발생을 등록한다.\n② 본인 반 학생들의 결석·조퇴·지각 사유를 확인하고 (의심)환자를 파악한다.\n③ 학교감염병관리조직을 활성화시켜 능동감시를 강화하면서 학년부장을 통해 보건교사에게 보고한다.\n④ 추가 발견된 인플루엔자 의심 학생에 대하여 의료기관 진료를 받을 수 있도록 안내한다.\n⑤ 결석한 학생에게 생활지도를 실시하고 필요한 행정조치를 보호자에게 안내한다.', keywords: ['NEIS 환자등록', '근태사유 파악', '능동감시 강화', '진료 안내', '생활지도'] },
+          '보건(담당)교사': { prompt: '인플루엔자 의심 환자가 20명으로 늘었습니다. 보건교사로서 어떤 조치를 취해야 할까요?', answer: '① 유행의심 상황 발생을 학교장과 교육(지원)청에 보고한다.\n② 환자 발생 현황을 학교장과 교육(지원)청에 보고한다.\n③ 매일 보건실 이용 학생의 감염병 증상 여부를 확인한다.\n④ 인플루엔자 환자 발생 현황을 분석한다. — (의심)환자·완치자 등 일일 현황을 집계한다.\n⑤ 미리 파악한 고위험군 명단을 활용하여, 고위험군이 노출되는 경우 담임교사를 통해 즉시 의료기관 진료를 받도록 요청한다.', keywords: ['유행 상황 보고', '증상 모니터링', '일일 현황 집계', '고위험군 보호'] },
+          '행정실': { prompt: '집단 유행이 의심되는 상황입니다. 행정실에서는 어떤 방역 조치를 취해야 할까요?', answer: '① 보건실·교실·일시적 관찰실 등의 환기 및 소독을 실시한다.\n② 소독제를 이용하여 오염 가능성이 높은 물체 표면을 닦는다. (책상, 의자, 교탁, 창틀, 사물함, 출입문 및 화장실 손잡이, 악기, 실험실 실험도구, 컴퓨터실 키보드·마우스)\n③ 전체 시설 소독을 실시한다.', keywords: ['시설 환기·소독', '주요 접촉면 소독', '전체 방역 실시'] },
+          '교장/교감': { prompt: '집단 유행이 의심되는 상황입니다. 학교장으로서 어떤 결정과 조치를 취해야 할까요?', answer: '① 신고가 필요한 경우 관할 보건소장에게 신고한다.\n② 학생 감염병 관리조직을 활성화한다.\n③ 단축수업 및 자체 휴업 실시 필요성을 검토한다.\n④ 수학여행·교내 행사 등 단체 활동의 제한 여부를 검토한다.', keywords: ['보건소 신고', '관리조직 활성화', '수업조정 검토', '단체활동 제한 검토'] },
+          '교육(지원)청': { prompt: '관내 학교에서 집단 유행이 의심된다는 보고를 받았습니다. 교육청으로서 무엇을 해야 할까요?', answer: '① 관내 학교에 대한 능동감시를 실시한다.\n② 관내 학교에 대한 관할 보건소 역학조사를 요청하고 실시에 협조한다.\n③ 휴업 등 행정조치 시 필요사항을 검토한다.\n④ 필요 시 방역물품을 지원하고 언론 대응에 협조한다.', keywords: ['능동감시', '역학조사 요청', '행정조치 검토', '물품지원·언론대응'] }
+        }
+      }
+    ]
+  },
+  {
+    id: 'chickenpox',
+    name: '수두',
+    emoji: '🔴',
+    color: '#8e44ad',
+    description: '수포성 발진 학생 발견부터 집단 유행까지 3단계 학교 대응 훈련',
+    phases: [
+      {
+        id: 1, title: '수포성 발진 학생 발견', emoji: '🔴', color: '#e67e22', colorClass: 'phase-1-color',
+        date: '4월 8일 (월)',
+        situation: '2학년 3반 담임교사가 아침 조례 중 이수진 학생의 얼굴과 팔에 작은 수포성 발진이 생긴 것을 발견했습니다. 이수진은 미열과 함께 가려움증을 호소하고 있습니다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '수포성 발진이 발견된 이수진과 반 학생들을 어떻게 조치할까요?', answer: '① 즉시 보건교사에게 연락하고 이수진을 교실 밖으로 분리합니다.\n② 이수진에게 마스크를 착용시키고 보건실로 동행합니다.\n③ 이수진이 앉던 자리 주변 학생들에게 손씻기 및 발진 증상 관찰을 안내합니다.\n④ 교실 창문을 열어 충분히 환기시킵니다.', keywords: ['보건교사 연락', '학생 분리', '마스크 착용', '보건실 동행', '교실 환기', '손씻기 안내'] },
+          '보건(담당)교사': { prompt: '보건실로 온 이수진을 어떻게 조치하나요?', answer: '① 보건교사 본인도 마스크와 장갑을 착용한 후 이수진의 발진 부위와 증상을 확인합니다.\n② 수두 의심 시 즉시 격리실(관찰실)에 대기시키고 다른 학생들과 접촉을 차단합니다.\n③ 보호자에게 즉시 연락하여 귀가 및 소아청소년과 진료를 안내합니다.\n④ 예방접종 미완료 여부를 확인합니다.', keywords: ['마스크·장갑 착용', '발진 증상 확인', '격리실 대기', '보호자 연락', '의료기관 진료', '예방접종 확인'] },
+          '행정실': { prompt: '수두 의심 환자 발생 시 행정 지원은?', answer: '① 보건교사 요청에 따라 관찰실(격리 공간) 환기 및 소독 물품을 즉시 준비합니다.\n② 2학년 3반 교실 소독을 지원하고 소독 용품(소독제, 일회용 장갑 등)을 공급합니다.\n③ 학교 내 소독 실시 현황을 기록합니다.', keywords: ['관찰실 소독 준비', '교실 소독 지원', '소독 물품 공급', '소독 현황 기록'] },
+          '교장/교감': { prompt: '수두 의심 사례 발생 시 관리자의 역할은?', answer: '① 보건교사로부터 수두 의심 보고를 받고 현황을 파악합니다.\n② 보건교사와 담임교사가 초기 조치를 원활히 수행할 수 있도록 지원합니다.\n③ 수두 예방접종 미완료 학생 현황을 파악하도록 보건교사에게 지시합니다.\n④ 추가 유증상자 발생 여부를 모니터링하도록 지시합니다.', keywords: ['보고 수령 및 현황 파악', '초기 조치 지원', '미접종 학생 현황 파악 지시', '추가 유증상자 모니터링'] }
+        }
+      },
+      {
+        id: 2, title: '수두 확진 및 접촉자 관리', emoji: '🚨', color: '#c0392b', colorClass: 'phase-2-color',
+        date: '4월 9일 (화)',
+        situation: '이수진 보호자로부터 "소아청소년과에서 수두 확진 판정을 받았다"는 연락이 왔습니다. 수두는 2급 감염병으로 즉시 보건소 신고 및 접촉자 관리가 필요합니다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '수두 확진 후 반 학생들 관리와 출결 처리는?', answer: '① 이수진에게 모든 수포에 딱지가 앉을 때까지 등교 중지(완치 후 복귀)를 안내합니다.\n② 2학년 3반 전체 학생을 대상으로 매일 발진·발열 증상 여부를 확인합니다.\n③ 수두 예방접종력이 없는 학생은 즉시 보호자에게 연락하여 의료기관 상담을 안내합니다.\n④ 학생들에게 가려운 부위를 손으로 긁지 않도록 지도합니다.', keywords: ['등교 중지 안내', '매일 증상 확인', '미접종 학생 보호자 연락', '긁지 않도록 지도'] },
+          '보건(담당)교사': { prompt: '수두 확진에 따른 행정 보고와 접촉자 관리는?', answer: '① 수두는 2급 감염병으로 관할 보건소에 즉시 신고합니다.\n② 나이스(NEIS)를 통해 교육지원청에 감염병 발생을 보고합니다.\n③ 2학년 3반 및 이수진과 접촉한 학생 명단을 작성하고 증상 모니터링을 실시합니다.\n④ 수두 예방접종 미완료 학생을 파악하여 예방접종 권고 및 등교 여부를 검토합니다.\n⑤ 가정통신문을 통해 수두 발생 사실 및 예방수칙을 안내합니다.', keywords: ['보건소 신고', 'NEIS 보고', '접촉자 명단 작성', '미접종 학생 파악', '가정통신문 발송'] },
+          '행정실': { prompt: '수두 확진 후 행정적 지원 및 방역 조치는?', answer: '① 보건교사 요청에 따라 가정통신문 인쇄 및 배부를 지원합니다.\n② 교실 및 공용 공간(화장실, 복도 등)에 대한 정기 소독을 실시합니다.\n③ 소독 물품 재고를 확인하고 부족 시 즉시 구매 요청합니다.', keywords: ['가정통신문 지원', '공용 공간 정기 소독', '소독 물품 재고 확인'] },
+          '교장/교감': { prompt: '2급 감염병 발생 시 학교 차원의 지시 사항은?', answer: '① 보건소 신고 및 교육청 보고가 신속히 이루어지도록 지원합니다.\n② 수두 예방접종 미완료 학생에 대한 전교 현황 파악을 지시합니다.\n③ 학교 홈페이지에 수두 발생 관련 예방수칙 공지를 게시합니다.\n④ 학교 내 집단감염 예방을 위한 환경 소독 강화를 지시합니다.', keywords: ['보건소 신고 지원', '전교 미접종 현황 파악', '홈페이지 공지', '환경 소독 강화 지시'] }
+        }
+      },
+      {
+        id: 3, title: '수두 집단 유행 발생', emoji: '💥', color: '#8e44ad', colorClass: 'phase-3-color',
+        date: '4월 12일 (금)',
+        situation: '일주일 사이 2학년을 중심으로 수두 확진자가 총 15명으로 늘었고, 3학년에서도 2명이 추가 발생했습니다. 보건소에서 역학조사관이 파견되어 학교 현장 조사를 실시할 예정입니다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '집단 유행 상황에서 학급 관리와 학생 지도는?', answer: '① NEIS에 추가 감염병 환자를 등록하고 출결을 처리합니다.\n② 발진·발열 증상 학생은 즉시 귀가 조치하고 의료기관 진료를 안내합니다.\n③ 수포 분비물이 묻은 물건(교과서, 문구 등)의 공유를 금지합니다.\n④ 잔류 학생들의 손씻기 및 개인위생 수칙을 철저히 지도합니다.', keywords: ['NEIS 환자 등록', '귀가 조치 및 진료 안내', '물건 공유 금지', '개인위생 지도'] },
+          '보건(담당)교사': { prompt: '집단 유행 시 모니터링 및 보건소 협조 방안은?', answer: '① 역학조사관에게 접촉자 명단, 예방접종력, 발병 일시 등 역학정보를 제공합니다.\n② 매일 신규 환자 수, 완치·복귀 현황을 집계하여 교육청에 보고합니다.\n③ 집단 접촉이 이루어진 공간(교실, 급식실 등)에 대한 집중 소독을 요청합니다.\n④ 수두 예방접종 미완료 학생에게 즉시 접종받도록 강력히 권고합니다.', keywords: ['역학정보 제공', '일일 환자 현황 보고', '집중 소독 요청', '즉시 예방접종 권고'] },
+          '행정실': { prompt: '집단 유행에 따른 전교 방역 강화 계획은?', answer: '① 교실, 화장실, 급식실, 도서관 등 전 시설에 대한 집중 소독을 실시합니다.\n② 소독 담당자를 지정하고 매일 소독 일지를 작성합니다.\n③ 역학조사관 방문을 위한 학교 자료(소독 일지, 시설 현황 등)를 준비합니다.\n④ 학교 내 손소독제를 각 교실 및 공용 공간에 추가 배치합니다.', keywords: ['전 시설 집중 소독', '소독 일지 작성', '역학조사 자료 준비', '손소독제 추가 배치'] },
+          '교장/교감': { prompt: '집단 유행 시 학사 운영 결단과 외부 대응은?', answer: '① 보건소장에게 집단 수두 발생을 정식 신고하고 역학조사에 적극 협조합니다.\n② 유행 규모에 따라 단축수업, 학급 분리, 임시 휴업 등을 검토합니다.\n③ 체육대회, 수학여행 등 단체 활동을 일시 중단 또는 연기합니다.\n④ 학부모 대상 긴급 가정통신문을 발송하고 필요 시 학부모 설명회를 개최합니다.\n⑤ 교육청과 지속 협의하여 학교 운영 방향을 결정합니다.', keywords: ['보건소 신고 및 역학조사 협조', '단축수업·휴업 검토', '단체 활동 중단', '학부모 긴급 통신문', '교육청 협의'] }
+        }
+      }
+    ]
+  },
+  {
+    id: 'tuberculosis',
+    name: '결핵',
+    emoji: '🫁',
+    color: '#27ae60',
+    description: '결핵 의심 증상 학생 발견부터 집단감염 우려 대응까지 3단계 훈련',
+    phases: [
+      {
+        id: 1, title: '결핵 의심 증상 학생 발견', emoji: '🫁', color: '#e67e22', colorClass: 'phase-1-color',
+        date: '5월 13일 (월)',
+        situation: '3학년 2반 담임교사가 박민준 학생이 2주 이상 지속되는 기침과 미열, 체중 감소를 호소한다는 사실을 확인했습니다. 보건교사와 상담 결과 결핵 의심 증상으로 판단되었습니다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '결핵 의심 증상 학생 발견 시 즉각적인 조치는?', answer: '① 박민준에게 즉시 마스크를 착용시키고 보건교사에게 연락합니다.\n② 박민준을 보건실로 동행하여 보건교사의 초기 상담을 받도록 합니다.\n③ 반 학생들에게 증상에 대해 공개하지 않고, 조용히 분리 조치합니다.\n④ 박민준과 최근 밀접 접촉한 학생 현황을 비공개로 파악합니다.', keywords: ['마스크 착용', '보건교사 연락', '보건실 동행', '비공개 분리', '밀접 접촉자 파악'] },
+          '보건(담당)교사': { prompt: '결핵 의심 학생에 대한 초기 조치와 안내는?', answer: '① 박민준의 증상(기침 기간, 발열, 체중 변화 등)을 상세히 파악합니다.\n② 보건교사 본인도 KF94 마스크를 착용하고 접촉을 최소화합니다.\n③ 보호자에게 즉시 연락하여 결핵 의심 증상을 설명하고 당일 결핵 전문 의료기관(보건소 또는 병원) 진료를 강력히 권고합니다.\n④ 박민준을 다른 학생들과 분리된 공간(환기되는 별도 공간)에 대기시킵니다.', keywords: ['증상 상세 파악', 'KF94 마스크 착용', '보호자 연락', '결핵 전문기관 진료 권고', '분리 대기'] },
+          '행정실': { prompt: '결핵 의심 환자 발생 시 행정 지원은?', answer: '① 보건교사 요청에 따라 환기가 잘 되는 별도 대기 공간을 마련합니다.\n② 해당 교실 및 공용 공간에 대한 환기를 즉시 강화합니다.\n③ 방역 소모품(마스크, 소독제, 장갑 등) 재고를 확인하고 보건교사에게 제공합니다.', keywords: ['별도 대기 공간 마련', '환기 강화', '방역 소모품 제공'] },
+          '교장/교감': { prompt: '결핵 의심 사례 발생 시 관리자 역할은?', answer: '① 보건교사로부터 결핵 의심 학생 발생 보고를 받고 현황을 파악합니다.\n② 학생 개인정보 보호를 위해 관련 정보의 비공개 원칙을 교직원에게 안내합니다.\n③ 보건교사가 신속히 조치할 수 있도록 지원하고 의료기관 진료 결과를 보고받을 준비를 합니다.\n④ 진단 결과에 따라 추가 조치를 준비합니다.', keywords: ['현황 파악', '개인정보 비공개 원칙', '보건교사 지원', '진단 결과 보고 대기'] }
+        }
+      },
+      {
+        id: 2, title: '결핵 확진 및 접촉자 조사', emoji: '🚨', color: '#c0392b', colorClass: 'phase-2-color',
+        date: '5월 15일 (수)',
+        situation: '박민준이 보건소 결핵 검사 결과 활동성 결핵으로 확진되었습니다. 결핵은 3급 감염병으로 보건소 역학조사 및 접촉자 흉부 X선 검사가 실시되어야 합니다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '결핵 확진 후 학급 내 접촉자 관리는?', answer: '① 박민준에게 결핵 치료 완료 및 보건소의 등교 허가 시까지 등교 중지를 안내합니다.\n② 보건교사와 협력하여 3학년 2반 전체 학생의 접촉자 명단을 작성합니다.\n③ 학생 개인정보 보호를 철저히 하면서 흉부 X선 검사 안내 가정통신문을 배부합니다.\n④ 학부모에게 결핵에 대한 과도한 공포심을 유발하지 않도록 안내합니다.', keywords: ['등교 중지 안내', '접촉자 명단 작성', '가정통신문 배부', '개인정보 보호', '과도한 공포 예방'] },
+          '보건(담당)교사': { prompt: '결핵 확진에 따른 법정 보고와 역학조사 협조는?', answer: '① 결핵은 3급 감염병으로 관할 보건소에 즉시 신고합니다(확인 후 24시간 내).\n② 나이스(NEIS)를 통해 교육지원청에 결핵 확진 발생을 보고합니다.\n③ 보건소 역학조사관에게 접촉자 명단(동일 교실, 동아리, 방과후 활동 등)을 제공합니다.\n④ 접촉자 흉부 X선 검사 일정을 조율하고 검사 안내문을 작성합니다.\n⑤ IGRA(인터페론 감마 검사) 또는 투베르쿨린 검사 안내를 준비합니다.', keywords: ['보건소 신고', 'NEIS 보고', '접촉자 명단 제공', '흉부 X선 검사 조율', 'IGRA 검사 안내'] },
+          '행정실': { prompt: '결핵 확진 후 학교 내 환경 관리는?', answer: '① 박민준이 주로 생활한 교실, 도서관, 급식실 등에 대한 철저한 환기를 실시합니다.\n② 자연 환기가 어려운 공간은 기계 환기 장치를 가동하고 환기 시간을 늘립니다.\n③ 역학조사 결과에 따라 추가 소독이 필요한 공간을 지정하여 소독합니다.\n④ 가정통신문 인쇄·배부 및 관련 행정 처리를 지원합니다.', keywords: ['철저한 환기 실시', '기계 환기 가동', '지정 공간 소독', '행정 처리 지원'] },
+          '교장/교감': { prompt: '결핵 확진에 따른 학교 차원의 대응은?', answer: '① 보건소의 역학조사에 전면 협조하고 필요한 자료를 신속히 제공합니다.\n② 교직원 및 학생들의 과도한 불안을 예방하기 위해 정확한 정보를 제공합니다.\n③ 결핵 접촉자 전원의 흉부 X선 검사가 이루어지도록 학교 차원에서 안내합니다.\n④ 교육청에 상황을 보고하고 추가 지원 방안을 협의합니다.', keywords: ['역학조사 전면 협조', '정확한 정보 제공', '전원 흉부 X선 검사 안내', '교육청 보고 및 협의'] }
+        }
+      },
+      {
+        id: 3, title: '집단감염 우려 및 추가 대응', emoji: '💥', color: '#8e44ad', colorClass: 'phase-3-color',
+        date: '5월 22일 (수)',
+        situation: '접촉자 흉부 X선 검사 결과, 3학년 2반에서 잠복 결핵 감염자 3명이 추가로 확인되었습니다. 보건소에서는 학교 전체 검진과 추가 역학조사를 요청했습니다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '잠복 결핵 감염자 추가 발견 시 학급 관리는?', answer: '① 잠복 결핵 감염자에게는 즉시 감염은 아니지만 예방적 치료의 중요성을 설명합니다.\n② 보건교사와 협력하여 추가 검사 대상 학생의 명단을 갱신합니다.\n③ 학생들이 결핵에 대해 올바르게 이해할 수 있도록 기초 정보를 제공합니다.\n④ 결석·조퇴 학생의 상황을 지속 모니터링하고 보건교사에게 보고합니다.', keywords: ['잠복 결핵 설명', '추가 검사 명단 갱신', '결핵 기초 정보 제공', '상황 지속 모니터링'] },
+          '보건(담당)교사': { prompt: '집단감염 우려 상황에서의 보건 대응은?', answer: '① 보건소 역학조사관과 긴밀히 협력하여 추가 접촉자를 파악합니다.\n② 전교생 및 교직원 대상 흉부 X선 검사 일정을 학교와 보건소가 공동으로 조율합니다.\n③ 잠복 결핵 감염자에게 예방적 치료(잠복 결핵 치료) 의의와 방법을 안내합니다.\n④ 매일 신규 의심 증상자 현황을 집계하여 교장과 교육청에 보고합니다.\n⑤ 학교 전체 환기 실태를 점검하고 개선이 필요한 공간을 보고합니다.', keywords: ['역학조사관 협력', '전교생 검사 조율', '잠복 결핵 치료 안내', '일일 현황 보고', '환기 실태 점검'] },
+          '행정실': { prompt: '집단 감염 우려 시 학교 환경 관리 강화는?', answer: '① 전교 흉부 X선 검사를 위한 학교 내 검사 장소 및 동선을 준비합니다.\n② 모든 교실과 공용 공간에 대해 정기 소독 주기를 단축하고 집중 환기를 실시합니다.\n③ 교직원 대상으로도 결핵 관련 예방 물품(마스크 등)을 배포합니다.\n④ 역학조사 관련 행정 서류 및 현황 자료를 신속히 준비·제출합니다.', keywords: ['검사 장소 준비', '소독 주기 단축', '교직원 예방 물품 배포', '행정 서류 준비'] },
+          '교장/교감': { prompt: '학교 차원의 위기 대응과 학사 운영 결단은?', answer: '① 보건소장에게 집단 결핵 발생을 공식 보고하고 역학조사에 계속 협조합니다.\n② 교육청과 협의하여 학교 운영 방향(단축수업, 임시 휴업 등)을 결정합니다.\n③ 단체 활동(수학여행, 체육대회 등)을 일시 중단하여 집단 접촉 기회를 최소화합니다.\n④ 학부모에게 상황을 투명하게 설명하는 안내문을 발송하고, 필요 시 설명회를 개최합니다.\n⑤ 결핵 검진 결과 양성 학생에 대한 개인정보 보호와 학교생활 정상화 방안을 마련합니다.', keywords: ['보건소 공식 보고', '교육청 협의 및 학사 결정', '단체 활동 중단', '학부모 안내문 발송', '개인정보 보호 방안'] }
+        }
+      }
+    ]
+  }
+];
+
+// ═══════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════
+const ROLE_ICONS = {
+  '담임교사': '📚', '보건(담당)교사': '🩺', '영양(교)사': '🥗',
+  '행정실': '📋', '교장/교감': '🏛️', '교육(지원)청': '🏢', '유관기관': '🤝'
+};
+const ALL_ROLES = ['담임교사', '보건(담당)교사', '영양(교)사', '행정실', '교장/교감', '교육(지원)청', '유관기관'];
+const AGENCY_ROLES = ['보건소', '시·군·구청', '도청', '식품의약품안전청'];
+const MIN_GROUPS = 1, MAX_GROUPS = 9;
+
+function normalizeRole(role) {
+  return AGENCY_ROLES.includes(role) ? '유관기관' : role;
+}
+function getActiveRoles(phase) {
+  const raw = phase.activeRoles ?? Object.keys(phase.missions);
+  return [...new Set(raw.map(normalizeRole))];
+}
+
+// ═══════════════════════════════════════════════════════
+//  LOGIN / AUTH
+// ═══════════════════════════════════════════════════════
+const DEFAULT_PASSWORD = 'medi2024!';
+
+function getAdminPassword() {
+  return localStorage.getItem('ttx_admin_password') || DEFAULT_PASSWORD;
+}
+
+function doLogin() {
+  const pw = document.getElementById('login-pw').value;
+  const err = document.getElementById('login-error');
+  if (pw === getAdminPassword()) {
+    err.style.display = 'none';
+    sessionStorage.setItem('ttx_admin_session', '1');
+    document.getElementById('screen-login').style.display = 'none';
+    document.getElementById('screen-admin').style.display = 'block';
+    initAdminPanel();
+  } else {
+    err.style.display = 'block';
+    document.getElementById('login-pw').value = '';
+    document.getElementById('login-pw').focus();
+  }
+}
+
+function doLogout() {
+  sessionStorage.removeItem('ttx_admin_session');
+  document.getElementById('screen-admin').style.display = 'none';
+  document.getElementById('screen-login').style.display = 'flex';
+  document.getElementById('login-pw').value = '';
+}
+
+function checkSession() {
+  if (sessionStorage.getItem('ttx_admin_session') === '1') {
+    document.getElementById('screen-login').style.display = 'none';
+    document.getElementById('screen-admin').style.display = 'block';
+    initAdminPanel();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  SCENARIO MANAGEMENT
+// ═══════════════════════════════════════════════════════
+function getScenarios() {
+  try {
+    const saved = localStorage.getItem('ttx_admin_scenarios');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length) return parsed;
+      if (typeof parsed === 'string') {
+        const inner = JSON.parse(parsed);
+        if (Array.isArray(inner) && inner.length) return inner;
+      }
+    }
+  } catch {}
+  return JSON.parse(JSON.stringify(DEFAULT_SCENARIOS));
+}
+
+function scenariosToFirebase(scenarios) { return JSON.stringify(scenarios); }
+function scenariosFromFirebase(raw) {
+  if (!raw) return null;
+  if (typeof raw === 'string') { try { return JSON.parse(raw); } catch { return null; } }
+  if (Array.isArray(raw)) return raw;
+  return null;
+}
+
+function saveScenarios(scenarios) {
+  localStorage.setItem('ttx_admin_scenarios', JSON.stringify(scenarios));
+  db.ref('settings/scenarios').set(scenariosToFirebase(scenarios))
+    .catch(e => console.warn('Firebase 저장 실패:', e));
+}
+
+// ═══════════════════════════════════════════════════════
+//  GROUP COUNT
+// ═══════════════════════════════════════════════════════
+function getGroupCount() { return parseInt(localStorage.getItem('ttx_group_count') || '4'); }
+function saveGroupCount(n) {
+  localStorage.setItem('ttx_group_count', String(n));
+  db.ref('settings/groupCount').set(n);
+}
+function changeGroupCount(delta) {
+  let n = Math.min(MAX_GROUPS, Math.max(MIN_GROUPS, getGroupCount() + delta));
+  saveGroupCount(n);
+  renderAdminGroupCount();
+  showToast(`✅ 조 수가 ${n}개로 변경되었습니다`);
+}
+function renderAdminGroupCount() {
+  const n = getGroupCount();
+  document.getElementById('admin-group-count-display').textContent = `${n}조`;
+  document.getElementById('admin-group-count-num').textContent = n;
+  const btns = document.querySelectorAll('.btn-group-count');
+  if (btns[0]) btns[0].disabled = n <= MIN_GROUPS;
+  if (btns[1]) btns[1].disabled = n >= MAX_GROUPS;
+}
+
+// ═══════════════════════════════════════════════════════
+//  ADMIN PANEL INIT
+// ═══════════════════════════════════════════════════════
+let adminSelectedScenarioIndex = -1;
+let adminKeywordState = {};
+
+function initAdminPanel() {
+  renderAdminSidebar();
+  renderAdminGroupCount();
+  adminSelectedScenarioIndex = -1;
+  document.getElementById('admin-edit-area').innerHTML =
+    `<div class="admin-empty"><span class="icon">📋</span><p>좌측에서 시나리오를 선택하거나<br>새 시나리오를 추가하세요.</p></div>`;
+
+  // Firebase에서 최신 시나리오 로드
+  db.ref('settings/scenarios').once('value').then(snap => {
+    if (snap.exists()) {
+      const sc = scenariosFromFirebase(snap.val());
+      if (sc) {
+        localStorage.setItem('ttx_admin_scenarios', JSON.stringify(sc));
+        renderAdminSidebar();
+        showToast('✅ Firebase에서 최신 시나리오를 불러왔습니다');
+      }
+    }
+  }).catch(() => {});
+
+  // Firebase에서 조 수 로드
+  db.ref('settings/groupCount').once('value').then(snap => {
+    if (snap.exists()) {
+      localStorage.setItem('ttx_group_count', String(snap.val()));
+      renderAdminGroupCount();
+    }
+  }).catch(() => {});
+}
+
+function renderAdminSidebar() {
+  const scenarios = getScenarios();
+  const list = document.getElementById('admin-scenario-list');
+  list.innerHTML = scenarios.map((sc, i) => `
+    <button class="admin-scenario-item ${i === adminSelectedScenarioIndex ? 'active' : ''}" onclick="selectAdminScenario(${i})">
+      <span>${sc.emoji}</span>
+      <span style="flex:1">${sc.name}</span>
+      ${i >= DEFAULT_SCENARIOS.length || !DEFAULT_SCENARIOS.find(d => d.id === sc.id)
+        ? `<span class="del-btn" onclick="event.stopPropagation();deleteAdminScenario(${i})">✕</span>` : ''}
+    </button>
+  `).join('');
+}
+
+function selectAdminScenario(idx) {
+  adminSelectedScenarioIndex = idx;
+  renderAdminSidebar();
+  const sc = getScenarios()[idx];
+  renderAdminEditor(sc, idx);
+}
+
+function escAttr(str) {
+  return String(str || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function escapeHtmlAdmin(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function renderAdminEditor(sc, idx) {
+  const area = document.getElementById('admin-edit-area');
+  adminKeywordState = {};
+  sc.phases.forEach((p, pi) => {
+    Object.entries(p.missions).forEach(([role, m]) => {
+      const normRole = normalizeRole(role);
+      const kwKey = 'p' + pi + '_' + normRole.replace(/\//g, '_');
+      if (!adminKeywordState[kwKey]) adminKeywordState[kwKey] = [];
+      (m.keywords || []).forEach(k => { if (!adminKeywordState[kwKey].includes(k)) adminKeywordState[kwKey].push(k); });
+    });
+  });
+
+  const phaseSections = sc.phases.map((p, pi) => {
+    const activeRoles = getActiveRoles(p);
+    const roleCheckboxes = ALL_ROLES.map(role => {
+      const safeRole = role.replace(/\//g, '-');
+      const safeId = `p${pi}-role-${safeRole}`;
+      const checked = activeRoles.includes(role) ? 'checked' : '';
+      const kwKey = 'p' + pi + '_' + role.replace(/\//g, '_');
+      const hasMission = !!(adminKeywordState[kwKey] && adminKeywordState[kwKey].length > 0) ||
+        Object.keys(p.missions).some(r => normalizeRole(r) === role && (p.missions[r].prompt || p.missions[r].answer));
+      const btnHtml = hasMission
+        ? `<button type="button" onclick="showMissionForRole(${pi},'${safeRole}')" style="margin-left:4px;padding:2px 8px;background:#eaf2ff;color:var(--primary);border:1px solid #b3cfee;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">미션 편집</button>`
+        : `<button type="button" onclick="showMissionForRole(${pi},'${safeRole}')" style="margin-left:4px;padding:2px 8px;background:#f0fff0;color:#27ae60;border:1px solid #a9d6a9;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">+ 미션 추가</button>`;
+      return `<label class="role-checkbox-label" style="cursor:pointer">
+        <input type="checkbox" id="${safeId}" ${checked}> ${ROLE_ICONS[role] || ''} ${role}
+        ${btnHtml}
+      </label>`;
+    }).join('');
+
+    const missionSections = ALL_ROLES.map(role => {
+      const safeRole = role.replace(/\//g, '-');
+      const normRole = normalizeRole(role);
+      const m = Object.entries(p.missions).find(([r]) => normalizeRole(r) === normRole);
+      const mData = m ? m[1] : { prompt: '', answer: '', keywords: [] };
+      const kwKey = 'p' + pi + '_' + normRole.replace(/\//g, '_');
+      if (!adminKeywordState[kwKey]) adminKeywordState[kwKey] = [...(mData.keywords || [])];
+      const tagsHtml = (adminKeywordState[kwKey] || []).map((kw, ki) =>
+        `<span class="kw-admin-tag">${escapeHtmlAdmin(kw)}<button type="button" onclick="removeKeyword('${kwKey}',${ki})">×</button></span>`
+      ).join('');
+      return `
+        <div class="admin-role-section" id="mission-section-${pi}-${safeRole}" style="display:none">
+          <h4>${ROLE_ICONS[role] || ''} ${role} 미션
+            <button type="button" onclick="hideMissionSection(${pi},'${safeRole}')" style="float:right;background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;font-family:inherit">▲ 접기</button>
+          </h4>
+          <div class="admin-field"><label>미션 질문 (참가자에게 표시)</label>
+            <textarea id="p${pi}-${safeRole}-prompt" rows="2">${escAttr(mData.prompt)}</textarea></div>
+          <div class="admin-field"><label>모범 답안</label>
+            <textarea id="p${pi}-${safeRole}-answer" rows="4">${escAttr(mData.answer)}</textarea></div>
+          <div class="admin-field"><label>채점 키워드 <small style="font-weight:400;color:var(--muted)">(쉼표로 구분하여 추가)</small></label>
+            <div class="kw-admin-wrap" id="kw-tags-${kwKey}">${tagsHtml}</div>
+            <div style="display:flex;gap:6px">
+              <input class="kw-admin-input" id="kw-input-${kwKey}" placeholder="키워드 입력 후 Enter 또는 추가 클릭"
+                onkeydown="if(event.key==='Enter'){event.preventDefault();addKeyword('${kwKey}')}">
+              <button type="button" onclick="addKeyword('${kwKey}')"
+                style="padding:6px 12px;background:var(--primary);color:white;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">추가</button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+    <div class="admin-phase-section">
+      <div class="admin-phase-header" onclick="toggleAdminPhase(${pi})">
+        <span>${p.emoji}</span>
+        <span>${p.id}단계: ${p.title}</span>
+        <span class="toggle-icon" id="phase-toggle-${pi}">▼</span>
+      </div>
+      <div class="admin-phase-body" id="phase-body-${pi}">
+        <div class="admin-field-row">
+          <div class="admin-field"><label>단계 제목</label><input id="p${pi}-title" value="${escAttr(p.title)}"></div>
+          <div class="admin-field"><label>이모지</label><input id="p${pi}-emoji" value="${escAttr(p.emoji)}" style="max-width:80px"></div>
+        </div>
+        <div class="admin-field-row">
+          <div class="admin-field"><label>날짜/시기</label><input id="p${pi}-date" value="${escAttr(p.date)}"></div>
+          <div class="admin-field"><label>제한시간 (초)</label><input type="number" id="p${pi}-duration" value="${p.duration}"></div>
+        </div>
+        <div class="admin-field"><label>상황 설명</label><textarea id="p${pi}-situation" rows="3">${escAttr(p.situation)}</textarea></div>
+        <div class="admin-field">
+          <label>👥 이 단계 참여 역할 <small style="font-weight:400;color:var(--muted)">(역할 옆 버튼으로 미션 편집)</small></label>
+          <div class="role-checkbox-group">${roleCheckboxes}</div>
+        </div>
+        ${missionSections}
+        <div style="text-align:right;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
+          <button type="button" onclick="toggleAdminPhase(${pi})" style="padding:7px 18px;background:white;color:var(--muted);border:1.5px solid var(--border);border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">▲ ${p.id}단계 접기</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  area.innerHTML = `
+    <div class="admin-section">
+      <h2>📋 시나리오 기본 정보</h2>
+      <div class="admin-field-row">
+        <div class="admin-field"><label>시나리오 이름</label><input id="admin-sc-name" value="${escAttr(sc.name)}"></div>
+        <div class="admin-field"><label>이모지 아이콘</label><input id="admin-sc-emoji" value="${escAttr(sc.emoji)}" style="max-width:80px"></div>
+      </div>
+      <div class="admin-field"><label>색상 (hex)</label><input type="color" id="admin-sc-color" value="${sc.color}" style="width:60px;height:36px;padding:2px;cursor:pointer"></div>
+      <div class="admin-field"><label>시나리오 설명</label><textarea id="admin-sc-desc" rows="2">${escAttr(sc.description)}</textarea></div>
+    </div>
+    <div class="admin-section">
+      <h2>📝 단계별 내용 편집 <small style="font-size:12px;font-weight:400;color:var(--muted)">— Ctrl+S 로 저장</small></h2>
+      ${phaseSections}
+    </div>
+    <div style="display:flex;align-items:center;gap:0;padding-bottom:40px">
+      <button class="btn-admin-save" onclick="saveAdminScenario(${idx})">💾 저장 (Ctrl+S)</button>
+      <button class="btn-admin-danger" onclick="confirmDeleteScenario(${idx})">🗑 이 시나리오 삭제</button>
+    </div>`;
+}
+
+function showMissionForRole(pi, safeRole) {
+  const el = document.getElementById(`mission-section-${pi}-${safeRole}`);
+  if (el) { el.style.display = ''; el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+}
+function hideMissionSection(pi, safeRole) {
+  const el = document.getElementById(`mission-section-${pi}-${safeRole}`);
+  if (el) el.style.display = 'none';
+}
+function toggleAdminPhase(pi) {
+  const body = document.getElementById(`phase-body-${pi}`);
+  const icon = document.getElementById(`phase-toggle-${pi}`);
+  if (body.classList.contains('open')) {
+    body.classList.remove('open'); icon.textContent = '▼';
+  } else {
+    body.classList.add('open'); icon.textContent = '▲';
+  }
+}
+
+function addKeyword(kwKey) {
+  const input = document.getElementById(`kw-input-${kwKey}`);
+  if (!input) return;
+  const raw = input.value.trim();
+  if (!raw) return;
+  if (!adminKeywordState[kwKey]) adminKeywordState[kwKey] = [];
+  raw.split(',').map(s => s.trim()).filter(Boolean).forEach(val => {
+    if (!adminKeywordState[kwKey].includes(val)) adminKeywordState[kwKey].push(val);
+  });
+  input.value = '';
+  refreshKeywordTags(kwKey);
+}
+function removeKeyword(kwKey, ki) {
+  if (!adminKeywordState[kwKey]) return;
+  adminKeywordState[kwKey].splice(ki, 1);
+  refreshKeywordTags(kwKey);
+}
+function refreshKeywordTags(kwKey) {
+  const container = document.getElementById(`kw-tags-${kwKey}`);
+  if (!container) return;
+  container.innerHTML = (adminKeywordState[kwKey] || []).map((kw, ki) =>
+    `<span class="kw-admin-tag">${escapeHtmlAdmin(kw)}<button type="button" onclick="removeKeyword('${kwKey}',${ki})">×</button></span>`
+  ).join('');
+}
+
+function saveAdminScenario(idx) {
+  const scenarios = getScenarios();
+  const sc = scenarios[idx];
+  sc.name = document.getElementById('admin-sc-name').value.trim() || sc.name;
+  sc.emoji = document.getElementById('admin-sc-emoji').value.trim() || sc.emoji;
+  sc.color = document.getElementById('admin-sc-color').value;
+  sc.description = document.getElementById('admin-sc-desc').value.trim();
+
+  sc.phases.forEach((p, pi) => {
+    p.title = document.getElementById(`p${pi}-title`).value.trim() || p.title;
+    p.emoji = document.getElementById(`p${pi}-emoji`).value.trim() || p.emoji;
+    p.date = document.getElementById(`p${pi}-date`).value.trim();
+    p.duration = parseInt(document.getElementById(`p${pi}-duration`).value) || p.duration;
+    p.situation = document.getElementById(`p${pi}-situation`).value.trim();
+    p.activeRoles = ALL_ROLES.filter(role => {
+      const safeRole = role.replace(/\//g, '-');
+      const el = document.getElementById(`p${pi}-role-${safeRole}`);
+      return el && el.checked;
+    });
+    ALL_ROLES.forEach(role => {
+      const safeRole = role.replace(/\//g, '-');
+      const promptEl = document.getElementById(`p${pi}-${safeRole}-prompt`);
+      const answerEl = document.getElementById(`p${pi}-${safeRole}-answer`);
+      const kwKey = 'p' + pi + '_' + role.replace(/\//g, '_');
+      if (promptEl || answerEl) {
+        if (!p.missions[role]) p.missions[role] = { prompt: '', answer: '', keywords: [] };
+        if (promptEl) p.missions[role].prompt = promptEl.value.trim();
+        if (answerEl) p.missions[role].answer = answerEl.value.trim();
+        p.missions[role].keywords = adminKeywordState[kwKey] || [];
+      }
+    });
+  });
+
+  localStorage.setItem('ttx_admin_scenarios', JSON.stringify(scenarios));
+  renderAdminSidebar();
+  showToast('⏳ Firebase에 저장 중...');
+
+  db.ref('settings/scenarios').set(scenariosToFirebase(scenarios))
+    .then(() => showToast('✅ 저장 완료! 모든 기기에 즉시 반영됩니다.'))
+    .catch(e => {
+      console.error('Firebase 저장 실패:', e);
+      showToast('⚠️ 서버 저장 실패 — Firebase 규칙을 확인하세요');
+    });
+}
+
+function addNewScenario() {
+  const scenarios = getScenarios();
+  const template = JSON.parse(JSON.stringify(DEFAULT_SCENARIOS[0]));
+  template.id = 'custom_' + Date.now();
+  template.name = '새 시나리오';
+  template.emoji = '🦠';
+  template.description = '새로운 감염병 시나리오';
+  scenarios.push(template);
+  saveScenarios(scenarios);
+  renderAdminSidebar();
+  selectAdminScenario(scenarios.length - 1);
+}
+
+function confirmDeleteScenario(idx) {
+  const scenarios = getScenarios();
+  if (confirm(`'${scenarios[idx].name}' 시나리오를 삭제할까요?`)) {
+    deleteAdminScenario(idx);
+  }
+}
+
+function deleteAdminScenario(idx) {
+  const scenarios = getScenarios();
+  scenarios.splice(idx, 1);
+  saveScenarios(scenarios);
+  adminSelectedScenarioIndex = -1;
+  renderAdminSidebar();
+  document.getElementById('admin-edit-area').innerHTML =
+    `<div class="admin-empty"><span class="icon">📋</span><p>좌측에서 시나리오를 선택하거나<br>새 시나리오를 추가하세요.</p></div>`;
+}
+
+function changeAdminPassword() {
+  const newPw = document.getElementById('new-pw').value.trim();
+  if (!newPw) { alert('새 비밀번호를 입력하세요.'); return; }
+  if (newPw.length < 4) { alert('비밀번호는 4자 이상이어야 합니다.'); return; }
+  localStorage.setItem('ttx_admin_password', newPw);
+  document.getElementById('new-pw').value = '';
+  showToast('✅ 비밀번호가 변경되었습니다');
+}
+
+function resetToDefault() {
+  if (confirm('모든 시나리오를 기본값으로 초기화할까요?\n커스텀 시나리오는 모두 삭제됩니다.')) {
+    localStorage.removeItem('ttx_admin_scenarios');
+    db.ref('settings/scenarios').set(scenariosToFirebase(JSON.parse(JSON.stringify(DEFAULT_SCENARIOS))))
+      .then(() => showToast('✅ 기본값으로 초기화되었습니다 (Firebase 반영)'))
+      .catch(() => showToast('✅ 로컬 초기화 완료'));
+    adminSelectedScenarioIndex = -1;
+    renderAdminSidebar();
+    document.getElementById('admin-edit-area').innerHTML =
+      `<div class="admin-empty"><span class="icon">📋</span><p>기본값으로 초기화되었습니다.</p></div>`;
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('saved-toast');
+  t.textContent = msg || '✅ 저장되었습니다';
+  t.style.display = 'block';
+  t.style.animation = 'none';
+  setTimeout(() => { t.style.animation = 'slideUp 0.3s ease'; }, 10);
+  setTimeout(() => { t.style.display = 'none'; }, 2400);
+}
+
+// Ctrl+S 저장 단축키
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    if (document.getElementById('screen-admin').style.display !== 'none' && adminSelectedScenarioIndex >= 0) {
+      e.preventDefault();
+      saveAdminScenario(adminSelectedScenarioIndex);
+    }
+  }
+});
+
+// 세션 확인 후 초기화
+checkSession();
+</script>
+</body>
+</html>

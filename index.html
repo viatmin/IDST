@@ -1,0 +1,3534 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>감염병 모의 훈련 시뮬레이션</title>
+<style>
+  :root {
+    --primary: #1a3a5c;
+    --phase1: #e67e22;
+    --phase2: #c0392b;
+    --phase3: #8e44ad;
+    --feedback: #27ae60;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --border: #d1dbe8;
+    --text: #1e2a38;
+    --muted: #6b7c93;
+    --radius: 10px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* ── HOME SCREEN ── */
+  #screen-home {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 60%, #1a5276 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px 20px;
+  }
+  .home-header { text-align: center; color: white; margin-bottom: 40px; }
+  .home-header .icon { font-size: 64px; display: block; margin-bottom: 12px; }
+  .home-header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  .home-header p { font-size: 15px; opacity: 0.8; }
+  .scenario-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; max-width: 860px; width: 100%; }
+  .scenario-card-btn {
+    background: white; border-radius: 16px; padding: 32px 24px; text-align: center;
+    border: none; cursor: pointer; font-family: inherit; transition: all 0.2s;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  }
+  .scenario-card-btn:hover { transform: translateY(-4px); box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
+  .scenario-card-btn .sc-emoji { font-size: 52px; display: block; margin-bottom: 12px; }
+  .scenario-card-btn .sc-name { font-size: 20px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+  .scenario-card-btn .sc-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .sc-badge { display: inline-block; border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: white; margin-bottom: 10px; }
+  .home-footer { margin-top: 32px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .btn-admin-mode {
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.3);
+    color: white; border-radius: 8px; padding: 10px 20px; font-size: 13px;
+    cursor: pointer; font-family: inherit; transition: all 0.2s;
+  }
+  .btn-admin-mode:hover { background: rgba(255,255,255,0.22); }
+
+  /* ── LOGIN SCREEN ── */
+  #screen-login {
+    display: none; align-items: center; justify-content: center;
+    min-height: 100vh; background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 60%, #1a5276 100%);
+  }
+  .login-card {
+    background: white; border-radius: 18px; padding: 48px 40px;
+    width: 460px; max-width: 95vw; box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+  }
+  .login-logo { text-align: center; margin-bottom: 28px; }
+  .login-logo .icon { font-size: 52px; display: block; margin-bottom: 8px; }
+  .login-logo h1 { font-size: 20px; font-weight: 700; color: var(--primary); line-height: 1.4; }
+  .login-logo p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .form-group { margin-bottom: 18px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+  .form-group input {
+    width: 100%; padding: 11px 14px; border: 2px solid var(--border); border-radius: 8px;
+    font-size: 15px; font-family: inherit; color: var(--text); transition: border-color 0.2s;
+  }
+  .form-group input:focus { outline: none; border-color: var(--primary); }
+  .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+  .role-btn {
+    padding: 12px 8px; border: 2px solid var(--border); border-radius: 8px; cursor: pointer;
+    text-align: center; font-size: 13px; font-family: inherit; background: white;
+    transition: all 0.15s; line-height: 1.4;
+  }
+  .role-btn:hover { border-color: var(--primary); background: #f0f6ff; }
+  .role-btn.selected { border-color: var(--primary); background: var(--primary); color: white; }
+  .role-btn .role-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+  .role-btn.moderator-btn { grid-column: span 2; }
+  .btn-join {
+    width: 100%; padding: 14px; background: var(--primary); color: white;
+    border: none; border-radius: 10px; font-size: 16px; font-weight: 700;
+    cursor: pointer; font-family: inherit; margin-top: 8px; transition: background 0.2s;
+  }
+  .btn-join:hover { background: #244f7a; }
+  .btn-join:disabled { background: #aaa; cursor: not-allowed; }
+  .btn-back-home {
+    width: 100%; padding: 10px; background: none; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 8px; font-size: 14px;
+    cursor: pointer; font-family: inherit; margin-top: 10px; transition: all 0.2s;
+  }
+  .btn-back-home:hover { border-color: var(--primary); color: var(--primary); }
+  .session-hint { font-size: 12px; color: var(--muted); text-align: center; margin-top: 14px; }
+  .session-hint.mid-join-notice {
+    background: #fff8e1; border-left: 4px solid #e67e22; border-radius: 6px;
+    padding: 10px 12px; text-align: left; color: #7d4e00; margin-top: 14px;
+  }
+  .role-btn .new-badge {
+    display: inline-block; font-size: 10px; background: #28a745; color: white;
+    border-radius: 3px; padding: 1px 5px; margin-left: 4px; vertical-align: middle; line-height: 1.6;
+  }
+
+  /* ── GROUP SELECTOR ── */
+  .group-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 6px; }
+  .group-btn {
+    padding: 14px 8px; border: 2px solid var(--border); border-radius: 8px; cursor: pointer;
+    text-align: center; font-size: 15px; font-weight: 700; font-family: inherit; background: white;
+    transition: all 0.15s; line-height: 1.4; color: var(--text);
+  }
+  .group-btn:hover { border-color: var(--primary); background: #f0f6ff; }
+  .group-btn.selected { border-color: var(--primary); background: var(--primary); color: white; }
+  .group-btn .group-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+  .group-badge-header {
+    display: inline-block; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4);
+    color: white; border-radius: 20px; padding: 3px 12px; font-size: 12px; font-weight: 700; margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  /* ── ADMIN GROUP COUNT ── */
+  .group-count-row {
+    display: flex; align-items: center; gap: 12px; margin: 8px 0 4px;
+  }
+  .btn-group-count {
+    width: 32px; height: 32px; border-radius: 8px; border: 2px solid var(--border);
+    background: white; font-size: 18px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; color: var(--primary);
+    transition: all 0.15s; line-height: 1;
+  }
+  .btn-group-count:hover { border-color: var(--primary); background: #f0f6ff; }
+  .btn-group-count:disabled { color: #ccc; border-color: #eee; cursor: not-allowed; background: #fafafa; }
+  #admin-group-count-display {
+    font-size: 20px; font-weight: 700; color: var(--primary); min-width: 52px; text-align: center;
+  }
+  .group-count-hint { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* ── MAIN EXERCISE SCREEN ── */
+  #screen-exercise { display: none; flex-direction: column; min-height: 100vh; }
+
+  .ex-header {
+    background: var(--primary); color: white; padding: 0 24px;
+    display: flex; align-items: center; gap: 16px; height: 64px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .ex-header .title { font-size: 16px; font-weight: 700; flex: 1; }
+  .ex-header .title span { font-size: 12px; opacity: 0.7; display: block; }
+  .phase-badge { padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; background: rgba(255,255,255,0.15); }
+  .timer-display {
+    background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 8px; padding: 4px 14px; font-size: 22px; font-weight: 700;
+    font-variant-numeric: tabular-nums; min-width: 90px; text-align: center; transition: background 0.3s;
+  }
+  .timer-display.urgent { background: rgba(231,76,60,0.5); border-color: #e74c3c; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+  .phase-bar {
+    background: #e8edf3; padding: 10px 24px;
+    display: flex; align-items: center; gap: 0;
+  }
+  .phase-step {
+    flex: 1; text-align: center; font-size: 12px; padding: 6px 4px; border-radius: 6px;
+    color: var(--muted); cursor: default; position: relative; transition: all 0.3s;
+  }
+  .phase-step.active { background: white; font-weight: 700; box-shadow: var(--shadow); }
+  .phase-step.done { color: var(--feedback); }
+  .phase-step.feedback { background: #fff8e1; }
+  .phase-step.feedback .step-num { background: #f39c12; color: white; }
+  .phase-step .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%; font-weight: 700; font-size: 12px;
+    background: var(--border); color: var(--muted); margin-right: 4px; transition: all 0.3s;
+  }
+  .phase-step.active .step-num { background: var(--primary); color: white; }
+  .phase-step.done .step-num { background: var(--feedback); color: white; }
+
+  .ex-body { display: flex; gap: 20px; padding: 20px 24px; flex: 1; }
+
+  .scenario-panel { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; align-self: flex-start; }
+  .scenario-card {
+    background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+    overflow: hidden; margin-bottom: 16px;
+  }
+  .scenario-header {
+    padding: 14px 18px; font-weight: 700; font-size: 14px;
+    display: flex; align-items: center; gap: 8px; color: white;
+  }
+  .phase-1-color { background: var(--phase1); }
+  .phase-2-color { background: var(--phase2); }
+  .phase-3-color { background: var(--phase3); }
+  .phase-4-color { background: var(--feedback); }
+  .scenario-body { padding: 16px 18px; font-size: 14px; line-height: 1.7; }
+  /* ── 글씨 크기 위젯 (헤더 내 우측 상단) ── */
+  #font-size-widget {
+    display: none;
+    position: absolute; top: 8px; right: 12px; z-index: 200;
+    align-items: center; gap: 4px;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 8px; padding: 4px 8px;
+  }
+  #font-size-widget .fw-btn {
+    width: 26px; height: 26px; border-radius: 5px;
+    border: 1px solid rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.15); color: white;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    font-family: inherit; display: flex; align-items: center;
+    justify-content: center; transition: background 0.15s; line-height: 1;
+  }
+  #font-size-widget .fw-btn:hover { background: rgba(255,255,255,0.35); }
+  #font-size-widget .fw-step {
+    font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.9);
+    min-width: 24px; text-align: center;
+  }
+  #font-size-widget .fw-reset {
+    font-size: 10px; color: rgba(255,255,255,0.6); background: none; border: none;
+    cursor: pointer; font-family: inherit; text-decoration: underline; padding: 0 2px;
+    white-space: nowrap;
+  }
+  #font-size-widget .fw-reset:hover { color: white; }
+  .date-tag {
+    display: inline-block; background: #fff3e0; color: #e65100;
+    border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 700; margin-bottom: 8px;
+  }
+  .participants-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); }
+  .participants-card h3 { padding: 14px 18px; font-size: 14px; border-bottom: 1px solid var(--border); }
+  .participant-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 18px;
+    border-bottom: 1px solid #f0f4f8; font-size: 13px;
+  }
+  .participant-item:last-child { border-bottom: none; }
+  .p-dot { width: 10px; height: 10px; border-radius: 50%; background: #ccc; }
+  .p-dot.online { background: var(--feedback); }
+  .p-dot.submitted { background: var(--primary); }
+  .p-role { font-size: 11px; color: var(--muted); }
+
+  .work-area { flex: 1; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+  .mission-card {
+    background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+    border-left: 4px solid var(--primary); overflow: hidden;
+  }
+  .mission-card .mission-header {
+    padding: 14px 18px 10px; font-weight: 700; font-size: 15px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .my-role-badge { background: var(--primary); color: white; border-radius: 20px; padding: 3px 12px; font-size: 13px; }
+  .mission-prompt { padding: 0 18px 12px; font-size: 14px; color: #2c3e50; line-height: 1.6; }
+  .keyword-hint { padding: 10px 18px 14px; font-size: 12px; color: var(--muted); }
+  .keyword-hint strong { color: var(--primary); }
+  .kw-tag { display: inline-block; background: #eaf2ff; color: var(--primary); border-radius: 4px; padding: 2px 8px; margin: 2px; font-size: 11px; font-weight: 600; }
+  .textarea-wrap { padding: 0 18px 16px; }
+  .response-textarea {
+    width: 100%; min-height: 140px; padding: 12px 14px;
+    border: 2px solid var(--border); border-radius: 8px; font-size: 14px;
+    font-family: inherit; line-height: 1.7; resize: vertical; transition: border-color 0.2s;
+  }
+  .response-textarea:focus { outline: none; border-color: var(--primary); }
+  .response-textarea:disabled { background: #f7f9fc; color: var(--muted); }
+  .submit-row { display: flex; justify-content: flex-end; padding: 0 18px 16px; gap: 10px; }
+  .btn-submit {
+    padding: 10px 24px; background: var(--primary); color: white;
+    border: none; border-radius: 8px; font-size: 14px; font-weight: 700;
+    cursor: pointer; font-family: inherit; transition: background 0.2s;
+  }
+  .btn-submit:hover { background: #244f7a; }
+  .btn-submit.submitted { background: var(--feedback); cursor: default; }
+  .btn-submit:disabled { background: #aaa; cursor: not-allowed; }
+
+  .moderator-panel-card {
+    background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 20px 24px; border-left: 4px solid #f39c12;
+  }
+  .moderator-panel-card h3 { font-size: 15px; margin-bottom: 6px; color: #f39c12; }
+  .btn-next-phase {
+    padding: 12px 28px; border: none; border-radius: 8px; cursor: pointer;
+    font-size: 15px; font-weight: 700; font-family: inherit;
+    background: #e67e22; color: white; transition: background 0.2s; margin-right: 10px;
+  }
+  .btn-next-phase:hover { background: #cf6d17; }
+  .btn-next-phase:disabled { background: #aaa; cursor: not-allowed; }
+  .btn-start-timer {
+    padding: 12px 28px; border: none; border-radius: 8px; cursor: pointer;
+    font-size: 15px; font-weight: 700; font-family: inherit;
+    background: #27ae60; color: white; transition: background 0.2s; margin-right: 10px;
+  }
+  .btn-start-timer:hover { background: #1e8449; }
+  .btn-prev-phase {
+    padding: 12px 22px; border: 2px solid #95a5a6; border-radius: 8px; cursor: pointer;
+    font-size: 14px; font-weight: 700; font-family: inherit;
+    background: white; color: #555; transition: all 0.2s; margin-right: 10px;
+  }
+  .btn-prev-phase:hover { border-color: var(--primary); color: var(--primary); background: #f0f6ff; }
+  .ctrl-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  .other-filter-bar { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .other-filter-btn { padding:5px 13px; border-radius:20px; border:1.5px solid var(--border); background:white; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; color:var(--muted); transition:all 0.15s; white-space:nowrap; }
+  .other-filter-btn:hover { border-color:var(--primary); color:var(--primary); }
+  .other-filter-btn.active { background:var(--primary); color:white; border-color:var(--primary); }
+
+  .responses-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .response-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .response-card-header {
+    padding: 10px 14px; font-size: 13px; font-weight: 700;
+    display: flex; justify-content: space-between; align-items: center;
+    background: #f7f9fc; border-bottom: 1px solid var(--border);
+  }
+  .response-status { font-size: 11px; font-weight: 400; }
+  .status-waiting { color: var(--muted); }
+  .status-typing { color: #e67e22; }
+  .status-submitted { color: var(--feedback); font-weight: 600; }
+  .response-text { padding: 12px 14px; font-size: 13px; color: var(--text); line-height: 1.7; min-height: 80px; white-space: pre-wrap; }
+  .response-text.empty { color: var(--muted); font-style: italic; }
+
+  /* ── PROXY SECTION ── */
+  .proxy-section {
+    background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+    border-left: 4px solid #9b59b6; overflow: hidden; margin-top: 4px;
+  }
+  .proxy-section-header { padding: 14px 18px 10px; font-weight: 700; font-size: 14px; color: #9b59b6; }
+  .proxy-section-desc { padding: 0 18px 12px; font-size: 13px; color: var(--muted); }
+  .proxy-role-item { border-top: 1px solid var(--border); padding: 14px 18px; }
+  .proxy-role-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .proxy-mission-hint { font-size: 12px; color: var(--muted); background: #f7f9fc; border-radius: 6px; padding: 8px 12px; margin-bottom: 8px; line-height: 1.6; }
+  .proxy-textarea {
+    width: 100%; min-height: 90px; padding: 10px 12px;
+    border: 2px solid var(--border); border-radius: 8px; font-size: 13px;
+    font-family: inherit; line-height: 1.7; resize: vertical; transition: border-color 0.2s;
+    margin-bottom: 8px;
+  }
+  .proxy-textarea:focus { outline: none; border-color: #9b59b6; }
+  .proxy-textarea:disabled { background: #f7f9fc; color: var(--muted); }
+  .btn-proxy-submit {
+    padding: 8px 18px; background: #9b59b6; color: white;
+    border: none; border-radius: 6px; font-size: 13px; font-weight: 700;
+    cursor: pointer; font-family: inherit; transition: background 0.2s;
+  }
+  .btn-proxy-submit:hover { background: #7d3c98; }
+  .proxy-submitted-badge {
+    display: inline-block; background: #e8d5f5; color: #7d3c98;
+    border-radius: 20px; padding: 3px 12px; font-size: 12px; font-weight: 700;
+    margin-left: 8px;
+  }
+  .btn-proxy-edit {
+    padding: 6px 14px; background: white; color: #9b59b6;
+    border: 2px solid #9b59b6; border-radius: 6px; font-size: 12px; font-weight: 700;
+    cursor: pointer; font-family: inherit; margin-left: 8px; transition: all 0.2s;
+  }
+  .btn-proxy-edit:hover { background: #f5eafa; }
+
+  /* ── PROXY 모범 답안 ── */
+  .proxy-answer-toggle {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 12px; margin-bottom: 8px;
+    background: #f0f6ff; border: 1px solid #c8dff8; border-radius: 6px;
+    font-size: 12px; font-weight: 700; color: var(--primary);
+    cursor: pointer; user-select: none; width: 100%;
+    font-family: inherit; transition: background 0.15s;
+  }
+  .proxy-answer-toggle:hover { background: #deeeff; }
+  .proxy-answer-box {
+    display: none; position: relative;
+    background: #f0fff4; border: 1px solid #a9dfbf;
+    border-radius: 6px; padding: 10px 12px 10px 12px;
+    font-size: 12px; line-height: 1.8; color: #1e5631;
+    white-space: pre-wrap; margin-bottom: 8px;
+  }
+  .proxy-answer-box.open { display: block; }
+  .btn-copy-answer {
+    position: absolute; top: 8px; right: 8px;
+    padding: 4px 10px; background: white; border: 1px solid #a9dfbf;
+    border-radius: 5px; font-size: 11px; font-weight: 700; color: #1e5631;
+    cursor: pointer; font-family: inherit; transition: all 0.15s;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .btn-copy-answer:hover { background: #d5f5e3; border-color: #27ae60; }
+  .btn-copy-answer.copied { background: #27ae60; color: white; border-color: #27ae60; }
+
+  /* ── FEEDBACK SCREEN ── */
+  #screen-feedback { display: none; min-height: 100vh; }
+  .fb-header { background: var(--feedback); color: white; padding: 20px 32px; }
+  .fb-header h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+  .fb-header p { font-size: 14px; opacity: 0.85; }
+  .fb-body { padding: 28px 32px; }
+  .fb-phase-section { margin-bottom: 36px; }
+  .fb-phase-title {
+    font-size: 18px; font-weight: 700; margin-bottom: 16px;
+    padding: 12px 16px; border-radius: 8px;
+    background: #f7f9fc; border: 1.5px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+    transition: background 0.15s;
+  }
+  .fb-phase-title:hover { background: #eef2f7; }
+  .fb-phase-badge { padding: 4px 14px; border-radius: 20px; color: white; font-size: 13px; }
+  .fb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; padding: 14px 0 4px; }
+  .fb-filter-bar { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0 4px; }
+  .fb-filter-btn { padding:6px 14px; border-radius:20px; border:1.5px solid var(--border); background:white; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; color:var(--muted); transition:all 0.15s; white-space:nowrap; }
+  .fb-filter-btn:hover { border-color:var(--primary); color:var(--primary); }
+  .fb-filter-btn.active { background:var(--primary); color:white; border-color:var(--primary); }
+  .fb-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .fb-card-header { padding: 12px 16px; font-weight: 700; font-size: 14px; background: var(--primary); color: white; }
+  .my-fb-card { border: 2px solid var(--primary); box-shadow: 0 0 0 3px rgba(26,58,92,0.12); }
+  .fb-section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .fb-section:last-child { border-bottom: none; }
+  .fb-section h4 { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 600; }
+  .fb-section p { font-size: 13px; line-height: 1.7; white-space: pre-wrap; }
+  .fb-section p.empty { color: var(--muted); font-style: italic; }
+  .keyword-check { margin-top: 8px; }
+  .kw-found { display: inline-block; background: #d5f5e3; color: #1e8449; border-radius: 4px; padding: 2px 8px; margin: 2px; font-size: 11px; font-weight: 600; }
+  .kw-miss { display: inline-block; background: #fadbd8; color: #922b21; border-radius: 4px; padding: 2px 8px; margin: 2px; font-size: 11px; font-weight: 600; }
+  .score-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-left: 8px; }
+  .score-high { background: #d5f5e3; color: #1e8449; }
+  .score-mid { background: #fef9e7; color: #b7950b; }
+  .score-low { background: #fadbd8; color: #922b21; }
+  .score-pending { background: #eaf0fb; color: #1a3a5c; }
+  .checklist-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 10px; border-radius: 7px; margin-bottom: 4px;
+    background: #f7f9fc; border: 1.5px solid transparent; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .checklist-row:hover { background: #eaf0fb; border-color: #b8cce8; }
+  .checklist-row.checked { background: #eafaf1; border-color: #82e0aa; }
+  .checklist-row.checked .kw-label { color: #1e8449; font-weight: 700; }
+  .checklist-row.mod-readonly { cursor: default; }
+  .checklist-row.mod-readonly:hover { background: #f7f9fc; border-color: transparent; }
+  .checklist-row.checked.mod-readonly { background: #eafaf1; border-color: #82e0aa; }
+  .checklist-box {
+    width: 18px; height: 18px; min-width: 18px; border-radius: 4px;
+    border: 2px solid #b8cce8; background: white; display: flex; align-items: center;
+    justify-content: center; font-size: 12px; font-weight: 700; color: #1e8449;
+    transition: all 0.15s; margin-top: 1px;
+  }
+  .checklist-row.checked .checklist-box { background: #27ae60; border-color: #27ae60; color: white; }
+  .kw-label { font-size: 12px; font-weight: 600; color: #444; line-height: 1.5; }
+  .kw-sublabel { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .score-bar-wrap { height: 6px; background: #e8edf3; border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  .score-bar { height: 6px; border-radius: 3px; transition: width 0.4s, background 0.3s; }
+  .manual-score-total {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; background: #f0f4fa; border-radius: 8px; margin-top: 10px;
+  }
+  .manual-score-num { font-size: 22px; font-weight: 800; color: var(--primary); }
+  .manual-score-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .btn-restart {
+    padding: 12px 32px; background: var(--primary); color: white; border: none;
+    border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit;
+    margin-top: 24px; transition: background 0.2s;
+  }
+  .btn-restart:hover { background: #244f7a; }
+  .fb-summary {
+    background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 20px 24px; margin-bottom: 28px; border-left: 4px solid var(--feedback);
+  }
+  .fb-summary h3 { font-size: 16px; margin-bottom: 8px; }
+  .fb-summary p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+  .no-mission-notice { padding: 30px; text-align: center; color: var(--muted); font-size: 14px; }
+  .alert-box {
+    background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px;
+    padding: 12px 16px; font-size: 13px; color: #856404; margin: 0 18px 14px;
+  }
+  .lobby-card {
+    background: white; border-radius: 16px; box-shadow: var(--shadow);
+    padding: 40px 48px; text-align: center; max-width: 520px; width: 100%;
+  }
+  .lobby-card h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; color: var(--primary); }
+  .lobby-card p { color: var(--muted); font-size: 14px; line-height: 1.7; }
+  .my-role-display {
+    display: inline-block; background: var(--primary); color: white;
+    border-radius: 10px; padding: 10px 24px; font-size: 18px; font-weight: 700; margin: 16px 0;
+  }
+  .waiting-participants { margin-top: 20px; }
+  .waiting-participants h4 { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+  .dot-blink::after { content: '...'; animation: dots 1.5s infinite; }
+  @keyframes dots { 0% { content: '.'; } 33% { content: '..'; } 66% { content: '...'; } }
+
+  /* 관리자 패널 CSS는 admin.html 로 이동되었습니다 */
+
+  /* ── 토스트 알림 ── */
+  .saved-toast {
+    position: fixed; bottom: 24px; right: 24px; background: #27ae60; color: white;
+    border-radius: 10px; padding: 12px 22px; font-size: 14px; font-weight: 700;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2); z-index: 9999;
+    animation: slideUp 0.3s ease; display: none;
+  }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── 비활성 역할 버튼 ── */
+  .role-btn.disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+  .role-checkbox-label { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer; user-select: none; }
+
+  /* ══════════════════════════════════════════
+     RESPONSIVE — 태블릿 (768px 이하)
+  ══════════════════════════════════════════ */
+  @media (max-width: 768px) {
+    /* 홈 */
+    .home-header .icon { font-size: 48px; }
+    .home-header h1 { font-size: 20px; }
+    .home-header p { font-size: 13px; }
+    #screen-home { padding: 28px 16px; }
+    .scenario-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .scenario-card-btn { padding: 20px 14px; }
+    .scenario-card-btn .sc-emoji { font-size: 36px; }
+    .scenario-card-btn .sc-name { font-size: 15px; }
+    .scenario-card-btn .sc-desc { font-size: 12px; }
+
+    /* 로그인 */
+    .login-card { padding: 32px 24px; }
+    .role-grid { grid-template-columns: 1fr 1fr; }
+    .group-grid { grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); }
+
+    /* 훈련 헤더 */
+    .ex-header { height: auto; padding: 10px 14px; flex-wrap: wrap; gap: 8px; position: relative; }
+    .ex-header .title { font-size: 13px; }
+    .timer-display { font-size: 18px; padding: 3px 10px; }
+    .phase-bar { padding: 8px 12px; gap: 2px; }
+    .phase-step { font-size: 10px; padding: 4px 2px; }
+    .phase-step .step-num { width: 18px; height: 18px; font-size: 10px; margin-right: 2px; }
+
+    /* 훈련 본문: 좌우 → 상하 */
+    .ex-body { flex-direction: column; padding: 12px 14px; gap: 12px; }
+    .scenario-panel { width: 100%; }
+    .work-area { min-width: 0; }
+    /* 모더레이터: 컨트롤 패널을 모바일 최상단으로 */
+    .mod-right-panel { order: -1; }
+
+    /* 미션 카드 */
+    .mission-card .mission-header { font-size: 14px; }
+    .mission-prompt { font-size: 13px; }
+    .response-textarea { min-height: 110px; font-size: 13px; }
+    .submit-row { padding: 0 14px 14px; }
+    .btn-submit { padding: 10px 18px; font-size: 13px; }
+
+    /* 모더레이터 패널 */
+    .moderator-panel-card { padding: 16px 14px; }
+    .ctrl-row { gap: 6px; }
+    .btn-next-phase, .btn-start-timer { padding: 10px 16px; font-size: 13px; }
+    .btn-prev-phase { padding: 10px 14px; font-size: 13px; }
+    .responses-grid { grid-template-columns: 1fr; }
+
+    /* 프록시 */
+    .proxy-section { margin-top: 0; }
+
+    /* 피드백 */
+    .fb-header { padding: 16px 16px; }
+    .fb-header h1 { font-size: 18px; }
+    .fb-body { padding: 16px 14px; }
+    .fb-grid { grid-template-columns: 1fr; }
+    .fb-summary h3 { flex-wrap: wrap; word-break: keep-all; }
+    .fb-summary { padding: 14px 16px; }
+
+    /* 대기실(로비) */
+    .lobby-card { padding: 28px 20px; }
+
+  }
+
+  /* ══════════════════════════════════════════
+     RESPONSIVE — 모바일 (480px 이하)
+  ══════════════════════════════════════════ */
+  @media (max-width: 480px) {
+    /* 홈 */
+    .scenario-grid { grid-template-columns: 1fr; }
+    .home-header h1 { font-size: 18px; }
+    #screen-home { padding: 20px 12px; }
+
+    /* 로그인 */
+    .login-card { padding: 24px 16px; border-radius: 12px; }
+    .login-logo .icon { font-size: 40px; }
+    .login-logo h1 { font-size: 17px; }
+    .role-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .role-btn { padding: 10px 6px; font-size: 12px; }
+    .role-btn .role-icon { font-size: 18px; }
+    .group-grid { grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 6px; }
+    .group-btn { padding: 10px 4px; font-size: 13px; }
+    .group-btn .group-icon { font-size: 18px; }
+
+    /* 훈련 헤더 */
+    .ex-header .title { font-size: 12px; order: 1; flex: 0 0 100%; }
+    .phase-badge { font-size: 11px; order: 2; }
+    .timer-display { font-size: 17px; order: 3; margin-left: auto; }
+    #my-group-header { order: 4; }
+    .phase-step { font-size: 9px; }
+    .phase-step .step-num { display: none; }
+
+    /* 훈련 본문 */
+    .ex-body { padding: 10px 10px; gap: 10px; }
+    .mod-right-panel { order: -1; }
+    .scenario-body { font-size: 13px; }
+    .mission-card .mission-header { font-size: 13px; padding: 12px 14px 8px; }
+    .mission-prompt { padding: 0 14px 10px; font-size: 13px; }
+    .keyword-hint { padding: 8px 14px 12px; }
+    .textarea-wrap { padding: 0 14px 12px; }
+    .response-textarea { min-height: 100px; font-size: 13px; padding: 10px 12px; }
+    .submit-row { padding: 0 14px 12px; }
+    .btn-submit { width: 100%; padding: 12px; font-size: 14px; }
+
+    /* 모더레이터 패널 */
+    .btn-next-phase, .btn-start-timer, .btn-prev-phase { width: 100%; margin-right: 0; font-size: 14px; padding: 12px; }
+    .ctrl-row { flex-direction: column; gap: 8px; }
+
+    /* 참가자 카드 */
+    .participant-item { padding: 8px 14px; font-size: 12px; }
+
+    /* 피드백 */
+    .fb-header { padding: 14px 12px; }
+    .fb-header h1 { font-size: 16px; }
+    .fb-header p { font-size: 12px; }
+    .fb-body { padding: 12px 10px; }
+    .fb-phase-title { font-size: 15px; }
+    .btn-restart { width: 100%; font-size: 15px; padding: 14px; }
+
+    /* 대기실 */
+    .lobby-card { padding: 20px 14px; border-radius: 12px; }
+    .lobby-card h2 { font-size: 18px; }
+    .my-role-display { font-size: 15px; padding: 8px 18px; }
+
+    /* 토스트 */
+    .saved-toast { bottom: 12px; right: 12px; left: 12px; text-align: center; }
+  }
+</style>
+  <!-- Firebase & QRCode -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+<!-- QR 코드 모달 -->
+<div id="qr-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:white;border-radius:20px;padding:40px 48px;text-align:center;max-width:420px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,0.3)">
+    <h2 style="font-size:20px;font-weight:700;color:#1a3a5c;margin-bottom:6px">📱 QR 코드로 참가하기</h2>
+    <p style="font-size:13px;color:#6b7c93;margin-bottom:8px" id="qr-room-label">방 코드: —</p>
+    <div id="qr-code-box" style="display:inline-block;padding:12px;border:2px solid #d1dbe8;border-radius:12px;margin:16px 0"></div>
+    <p style="font-size:12px;color:#6b7c93;margin-bottom:20px">스캔하면 자동으로 이 방에 입장됩니다</p>
+    <div style="background:#f0f4f8;border-radius:8px;padding:10px 16px;font-size:13px;font-family:monospace;word-break:break-all;margin-bottom:10px" id="qr-url-text"></div>
+    <button id="btn-copy-url" onclick="copyQRUrl()" style="width:100%;padding:10px;background:#eaf2ff;color:#1a3a5c;border:2px solid #b3d1f5;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:12px;transition:all 0.2s">📋 URL 복사</button>
+    <button onclick="document.getElementById('qr-modal').style.display='none'" style="padding:10px 28px;background:#1a3a5c;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">닫기</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ MID-JOIN NOTICE MODAL ═══════════════════════════ -->
+<div id="mid-join-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:white;border-radius:16px;padding:32px 28px;max-width:360px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,0.25);text-align:center">
+    <div id="mid-join-modal-phase-icon" style="font-size:40px;margin-bottom:8px"></div>
+    <h2 style="font-size:17px;font-weight:700;color:#1a3a5c;margin-bottom:6px" id="mid-join-modal-title">훈련 진행 중</h2>
+    <p style="font-size:13px;color:#6b7c93;margin-bottom:16px" id="mid-join-modal-desc"></p>
+    <div id="mid-join-modal-roles" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:20px"></div>
+    <button onclick="document.getElementById('mid-join-modal').style.display='none'"
+      style="width:100%;padding:12px;background:#1a3a5c;color:white;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">
+      확인 후 역할 선택
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ HOME SCREEN ═══════════════════════════ -->
+<div id="screen-home">
+  <div class="home-header">
+    <span class="icon">🏫</span>
+    <h1>감염병 모의 훈련 시뮬레이션</h1>
+    <p>Tabletop Exercise · 학교 감염병 위기대응 협력 훈련</p>
+  </div>
+  <div class="scenario-grid" id="scenario-grid">
+    <!-- Dynamic -->
+  </div>
+  <div class="home-footer">
+    <a class="btn-admin-mode" href="모더레이터_튜토리얼.html" target="_blank" rel="noopener" style="text-decoration:none">📖 모더레이터 튜토리얼</a>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ LOGIN SCREEN ═══════════════════════════ -->
+<div id="screen-login">
+  <div class="login-card">
+    <div class="login-logo">
+      <span class="icon" id="login-scenario-icon">🏫</span>
+      <h1 id="login-scenario-title">감염병 위기대응<br>협력 훈련</h1>
+      <p>Tabletop Exercise · 감염병 대응 모의훈련</p>
+    </div>
+    <div class="form-group">
+      <label>조 선택</label>
+      <div class="group-grid" id="group-grid"></div>
+    </div>
+    <div class="form-group" id="room-code-group">
+      <label>방 코드 입력</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="room-code-input" placeholder="예: INFL-3조-A4F2" maxlength="20" style="text-transform:uppercase;flex:1" oninput="this.value=this.value.toUpperCase();onRoomCodeInput()">
+        <button type="button" id="room-code-verify-btn" onclick="verifyRoomCode()" style="padding:0 16px;height:44px;background:#1a3a5c;color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:background 0.2s" onmouseover="this.style.background='#244f7a'" onmouseout="this.style.background='#1a3a5c'">확인</button>
+      </div>
+      <div id="room-code-status" style="margin-top:6px;font-size:12px;color:var(--muted)">방 코드를 입력하면 조·역할이 자동으로 설정됩니다.</div>
+    </div>
+    <p class="session-hint" id="session-hint-text" style="display:none">※ 모더레이터가 QR 코드나 링크를 공유하면 자동으로 방에 연결됩니다</p>
+    <div class="form-group">
+      <label>이름 (성명)</label>
+      <input type="text" id="input-name" placeholder="예: 김선생" maxlength="20">
+    </div>
+    <div class="form-group">
+      <label>역할 선택</label>
+      <div class="role-grid" id="role-grid">
+        <button class="role-btn moderator-btn" data-role="모더레이터">
+          <span class="role-icon">🎙️</span>모더레이터 (진행자)<br><small style="opacity:0.7">훈련 진행 · 단계 통제</small>
+        </button>
+        <button class="role-btn" data-role="담임교사">
+          <span class="role-icon">📚</span>담임교사
+        </button>
+        <button class="role-btn" data-role="보건(담당)교사">
+          <span class="role-icon">🩺</span>보건(담당)교사
+        </button>
+        <button class="role-btn" data-role="영양(교)사">
+          <span class="role-icon">🥗</span>영양(교)사
+        </button>
+        <button class="role-btn" data-role="행정실">
+          <span class="role-icon">📋</span>행정실
+        </button>
+        <button class="role-btn" data-role="교장/교감">
+          <span class="role-icon">🏛️</span>교장/교감
+        </button>
+        <button class="role-btn" data-role="교육(지원)청">
+          <span class="role-icon">🏢</span>교육(지원)청
+        </button>
+        <button class="role-btn" data-role="유관기관">
+          <span class="role-icon">🤝</span>유관기관<br><small style="opacity:0.7;font-size:11px">보건소·구청·도청 등</small>
+        </button>
+      </div>
+    </div>
+    <button class="btn-join" id="btn-join" disabled>훈련 참가</button>
+    <button class="btn-back-home" onclick="goHome()">← 시나리오 선택으로 돌아가기</button>
+    <button id="btn-clear-room" onclick="clearRoomFromUrl()"
+      style="display:none;width:100%;margin-top:8px;padding:9px;background:none;border:1px dashed #e0a070;
+             border-radius:8px;font-size:13px;color:#b05010;cursor:pointer;font-family:inherit;transition:all 0.2s"
+      onmouseover="this.style.background='#fff3e8'" onmouseout="this.style.background='none'">
+      🔄 방 코드 초기화 (연결 끊기)
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ EXERCISE SCREEN ═══════════════════════════ -->
+<div id="screen-exercise">
+  <div class="ex-header">
+    <div class="title">
+      <span id="ex-header-title">감염병 위기대응 협력 훈련</span>
+      <span id="my-role-header">역할: —</span>
+      <span id="my-group-header" class="group-badge-header" style="display:none"></span>
+    </div>
+    <div class="phase-badge" id="phase-badge">대기 중</div>
+    <div class="timer-display" id="timer-display">05:00</div>
+    <div id="font-size-widget">
+      <button class="fw-btn" onclick="adjustFontSize(-2)" title="글씨 작게">가<sub style="font-size:8px">−</sub></button>
+      <span class="fw-step" id="fw-step-label">기본</span>
+      <button class="fw-btn" onclick="adjustFontSize(2)" title="글씨 크게">가<sup style="font-size:8px">+</sup></button>
+      <button class="fw-reset" onclick="resetFontSize()">초기화</button>
+    </div>
+  </div>
+  <div class="phase-bar">
+    <div class="phase-step" id="step-0"><span class="step-num">0</span>대기실</div>
+    <div class="phase-step" id="step-1"><span class="step-num">1</span>1단계</div>
+    <div class="phase-step" id="step-2"><span class="step-num">2</span>2단계</div>
+    <div class="phase-step" id="step-3"><span class="step-num">3</span>3단계</div>
+    <div class="phase-step" id="step-4"><span class="step-num">4</span>💡 피드백</div>
+  </div>
+  <div class="ex-body" id="ex-body"></div>
+</div>
+
+<!-- ═══════════════════════════ FEEDBACK SCREEN ═══════════════════════════ -->
+<div id="screen-feedback">
+  <div class="fb-header">
+    <h1>💡 피드백 및 평가 결과</h1>
+    <p>각 역할별 작성 내용을 정답 키워드와 비교하여 누락된 항목을 확인하고 개선점을 논의합니다.</p>
+  </div>
+  <div class="fb-body" id="fb-body"></div>
+</div>
+
+<!-- 관리자 패널은 admin.html 로 분리되었습니다 -->
+
+<div class="saved-toast" id="saved-toast">✅ 저장되었습니다</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  DEFAULT SCENARIO DATA
+// ═══════════════════════════════════════════════════════
+const DEFAULT_SCENARIOS = [
+  {
+    id: 'influenza',
+    name: '인플루엔자',
+    emoji: '🤧',
+    color: '#1a3a5c',
+    description: '계절성 인플루엔자 유증상자 발견부터 집단 유행까지 3단계 대응',
+    phases: [
+      {
+        id: 1, title: '유증상자 발견', emoji: '🛑', color: '#e67e22', colorClass: 'phase-1-color',
+        activeRoles: ['담임교사', '보건(담당)교사'],
+        date: '3월 5일',
+        situation: 'A광역시 B구에 소재한 ○○중학교는 총 24학급이며 1개 반에 25명의 학생으로 구성되어 있다. 학교 건물은 서관과 동관 두 개의 동으로 되어 있으며, 서관은 5층 건물로 1층에는 교장실, 교무실, 보건실, 휴게실, 도서관, 1학년 교실이 있고, 2층에는 2학년 교실과 음악실, 3층부터 4층까지는 2·3학년 교실, 5층은 강당으로 구성되어 있다. 동관은 단층으로 체육관이다. 3월 5일 ○○중학교 1학년 6반에서 진한이가 담임교사에게 고열과 심한 기침 및 가슴 통증을 호소하였다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '진한이가 고열·심한 기침·가슴 통증을 호소하고 있습니다. 담임교사로서 무엇을 해야 할까요?', answer: '① 보건교사에게 유선으로 진한이의 상태를 정확하게 전달한다.\n② 교실 환기를 실시하고, 진한이와 접촉한 학생들에게 손을 씻도록 하며 오염된 손으로 눈·코·입을 만지지 말 것, 재채기나 기침 시 옷소매로 가리도록 지도한다.\n③ 교실에 비치된 마스크를 진한이와 교사가 함께 착용하고, 진한이와 직접 동행하여 보건실로 이동한다. (담임교사가 임신부 등 고위험군일 경우 교무부장에게 연락하여 이동 담당 교사 지정을 요청한다.)\n④ 보건교사의 판단에 따라 진한이를 교내 일시적 관찰실에서 보호·관찰한다. 교무부장에게 기타 학생들의 수업 진행 등 관리를 요청한다.\n⑤ 진한이의 부모님에게 연락하여 근처 병원에서 진료를 받을 수 있도록 안내한다.', keywords: ['보건실 연락', '환기·위생지도', '마스크 동행', '일시적 관찰실', '학부모 안내'] },
+          '보건(담당)교사': { prompt: '담임교사와 진한이가 보건실에 도착했습니다. 보건교사로서 어떻게 조치해야 할까요?', answer: '① 교사와 진한이가 보건실에 도착한 즉시 손을 씻도록 요청한다.\n② 보건교사는 마스크를 착용하고, 체온 측정과 더불어 환자의 증상과 징후를 관찰한 후 감염병이 의심되는지를 확인한다.\n③ 진한이가 의료기관 진료를 받지 않았음을 확인하고, 담임교사에게 보호자에게 연락하여 의료기관 진료를 받도록 안내할 것을 요청한다.\n④ 일시적 관찰이 필요하므로 교무부장에게 연락하여 격리 담당 교사 결정을 요청한다.\n⑤ 진한이를 일시적 관찰실로 이동시키고, 부모님이 올 때까지 일시적 관찰실에서 보호·관찰하며 담당 교사를 통해 진한이의 상태를 주기적으로 확인한다.\n⑥ \'일시적 관찰실 출입 금지\' 안내판을 부착한다.', keywords: ['손씻기', '증상확인', '진료권고', '격리담당 요청', '관찰실 이동', '출입금지 부착'] }
+        }
+      },
+      {
+        id: 2, title: '확진자 발생 및 능동감시', emoji: '🚨', color: '#c0392b', colorClass: 'phase-2-color',
+        activeRoles: ['담임교사', '보건(담당)교사', '교장/교감', '교육(지원)청'],
+        date: '3월 6일',
+        situation: '3월 6일 1학년 6반 담임교사는 결석한 진한이의 부모님에게서, 진한이가 인플루엔자(유행성 독감)로 확진 받고 응급실에서 치료를 받게 되었다는 사실을 통보받았다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '진한이가 인플루엔자로 확진되었다는 통보를 받았습니다. 담임교사로서 무엇을 해야 할까요?', answer: '① 진한이의 증상이 안정될 때까지 치료를 받으며 집에서 휴식을 취하도록 보호자에게 관련 행정조치를 안내한다.\n② 반 학생들에게 인플루엔자에 대한 예방 교육을 실시한다.\n③ 진한이의 반과 같은 층을 사용하는 1학년 담임교사로서 능동감시를 실시한다. — 결석·조퇴·지각한 학생의 사유를 확인하고 인플루엔자 의심증상 발생 여부를 조사하며, 매일 1회 (의심)환자 발생 여부를 보건교사에게 통보한다.\n④ 전체 담임교사: 예방수칙 및 가정통신문을 보건교사로부터 제공받아 학생들에게 교육하고 안내한다.', keywords: ['가정내 휴식안내', '예방교육', '능동감시(사유확인)', '일일 보고', '가통 배부'] },
+          '보건(담당)교사': { prompt: '인플루엔자 확진자가 발생했습니다. 보건교사로서 어떤 행정 보고와 조치를 취해야 할까요?', answer: '① 나이스(NEIS)의 [보건/감염병 환자 관리] - [감염병 환자 등록]에 환자 발생을 등록한다.\n② 진한이와 같은 반에 보건학적 고위험군 학생(만성질환자·면역저하자·임신부 등)이 있는지 확인한다.\n③ 능동감시 대상(진한이와 같은 층을 사용하는 학급 전체)을 파악하고 학교장에게 보고한다.\n④ 인플루엔자에 대한 예방 교육 자료와 가정통신문을 기안하여 담임교사에게 배부를 요청한다.', keywords: ['NEIS 등록', '고위험군 확인', '능동감시 보고', '교육자료·가통 기안'] },
+          '교장/교감': { prompt: '보건교사로부터 인플루엔자 확진 발생을 보고받았습니다. 학교장으로서 어떤 지시를 내려야 할까요?', answer: '① 발생감시팀에게 추가 환자 파악을 위한 능동감시 실시를 지시하고, 그 결과를 보건교사에게 통보하도록 요청한다.', keywords: ['능동감시 지시', '보고 체계 가동'] },
+          '교육(지원)청': { prompt: '관내 학교에서 인플루엔자 확진자가 발생했습니다. 교육청으로서 무엇을 해야 할까요?', answer: '① 진한이의 학교 이외의 관내 다른 학교에서의 인플루엔자 발생 신고 여부를 확인한다.\n② 감염병 유행 시 필요한 행정조치에 대해 대비한다.', keywords: ['타 학교 발생 확인', '행정조치 대비'] }
+        }
+      },
+      {
+        id: 3, title: '교내 집단 유행 발생', emoji: '💥', color: '#8e44ad', colorClass: 'phase-3-color',
+        activeRoles: ['담임교사', '보건(담당)교사', '행정실', '교장/교감', '교육(지원)청'],
+        date: '3월 5일 ~ 3월 26일',
+        situation: '인플루엔자로 치료 중인 진한이의 담임교사 및 ○○중학교 선생님들은 보건교사의 요청에 따라 다른 학생들을 능동감시 한 결과, 3월 5일부터 3월 26일 사이에 같은 반 학생 5명에게도 고열과 심한 기침 등의 증세가 있음을 확인하였고, 1학년 6반과 같은 층에 있는 1학년 7반 3명, 1학년 8반 3명, 도서관을 이용했던 9명 등, 20명의 학생에게서 고열과 심한 기침, 콧물 재채기 등의 증상이 발생하였음을 확인하였다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '인플루엔자 의심 환자가 반 내외에서 무더기로 발생했습니다. 담임교사로서 무엇을 해야 할까요?', answer: '① 나이스(NEIS)의 [보건/감염병 환자 관리] - [감염병 환자 등록]에 환자 발생을 등록한다.\n② 본인 반 학생들의 결석·조퇴·지각 사유를 확인하고 (의심)환자를 파악한다.\n③ 학교감염병관리조직을 활성화시켜 능동감시를 강화하면서 학년부장을 통해 보건교사에게 보고한다.\n④ 추가 발견된 인플루엔자 의심 학생에 대하여 의료기관 진료를 받을 수 있도록 안내한다.\n⑤ 결석한 학생에게 생활지도를 실시하고 필요한 행정조치를 보호자에게 안내한다.', keywords: ['NEIS 환자등록', '근태사유 파악', '능동감시 강화', '진료 안내', '생활지도'] },
+          '보건(담당)교사': { prompt: '인플루엔자 의심 환자가 20명으로 늘었습니다. 보건교사로서 어떤 조치를 취해야 할까요?', answer: '① 유행의심 상황 발생을 학교장과 교육(지원)청에 보고한다.\n② 환자 발생 현황을 학교장과 교육(지원)청에 보고한다.\n③ 매일 보건실 이용 학생의 감염병 증상 여부를 확인한다.\n④ 인플루엔자 환자 발생 현황을 분석한다. — (의심)환자·완치자 등 일일 현황을 집계한다.\n⑤ 미리 파악한 고위험군 명단을 활용하여, 고위험군이 노출되는 경우 담임교사를 통해 즉시 의료기관 진료를 받도록 요청한다.', keywords: ['유행 상황 보고', '증상 모니터링', '일일 현황 집계', '고위험군 보호'] },
+          '행정실': { prompt: '집단 유행이 의심되는 상황입니다. 행정실에서는 어떤 방역 조치를 취해야 할까요?', answer: '① 보건실·교실·일시적 관찰실 등의 환기 및 소독을 실시한다.\n② 소독제를 이용하여 오염 가능성이 높은 물체 표면을 닦는다. (책상, 의자, 교탁, 창틀, 사물함, 출입문 및 화장실 손잡이, 악기, 실험실 실험도구, 컴퓨터실 키보드·마우스)\n③ 전체 시설 소독을 실시한다.', keywords: ['시설 환기·소독', '주요 접촉면 소독', '전체 방역 실시'] },
+          '교장/교감': { prompt: '집단 유행이 의심되는 상황입니다. 학교장으로서 어떤 결정과 조치를 취해야 할까요?', answer: '① 신고가 필요한 경우 관할 보건소장에게 신고한다.\n② 학생 감염병 관리조직을 활성화한다.\n③ 단축수업 및 자체 휴업 실시 필요성을 검토한다.\n④ 수학여행·교내 행사 등 단체 활동의 제한 여부를 검토한다.', keywords: ['보건소 신고', '관리조직 활성화', '수업조정 검토', '단체활동 제한 검토'] },
+          '교육(지원)청': { prompt: '관내 학교에서 집단 유행이 의심된다는 보고를 받았습니다. 교육청으로서 무엇을 해야 할까요?', answer: '① 관내 학교에 대한 능동감시를 실시한다.\n② 관내 학교에 대한 관할 보건소 역학조사를 요청하고 실시에 협조한다.\n③ 휴업 등 행정조치 시 필요사항을 검토한다.\n④ 필요 시 방역물품을 지원하고 언론 대응에 협조한다.', keywords: ['능동감시', '역학조사 요청', '행정조치 검토', '물품지원·언론대응'] }
+        }
+      }
+    ]
+  },
+  {
+    id: 'chickenpox',
+    name: '수두',
+    emoji: '🔴',
+    color: '#8e44ad',
+    description: '수포성 발진 학생 발견부터 집단 유행까지 3단계 학교 대응 훈련',
+    phases: [
+      {
+        id: 1, title: '수포성 발진 학생 발견', emoji: '🔴', color: '#e67e22', colorClass: 'phase-1-color',
+        date: '4월 8일 (월)',
+        situation: '2학년 3반 담임교사가 아침 조례 중 이수진 학생의 얼굴과 팔에 작은 수포성 발진이 생긴 것을 발견했습니다. 이수진은 미열과 함께 가려움증을 호소하고 있습니다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '수포성 발진이 발견된 이수진과 반 학생들을 어떻게 조치할까요?', answer: '① 즉시 보건교사에게 연락하고 이수진을 교실 밖으로 분리합니다.\n② 이수진에게 마스크를 착용시키고 보건실로 동행합니다.\n③ 이수진이 앉던 자리 주변 학생들에게 손씻기 및 발진 증상 관찰을 안내합니다.\n④ 교실 창문을 열어 충분히 환기시킵니다.', keywords: ['보건교사 연락', '학생 분리', '마스크 착용', '보건실 동행', '교실 환기', '손씻기 안내'] },
+          '보건(담당)교사': { prompt: '보건실로 온 이수진을 어떻게 조치하나요?', answer: '① 보건교사 본인도 마스크와 장갑을 착용한 후 이수진의 발진 부위와 증상을 확인합니다.\n② 수두 의심 시 즉시 격리실(관찰실)에 대기시키고 다른 학생들과 접촉을 차단합니다.\n③ 보호자에게 즉시 연락하여 귀가 및 소아청소년과 진료를 안내합니다.\n④ 예방접종 미완료 여부를 확인합니다.', keywords: ['마스크·장갑 착용', '발진 증상 확인', '격리실 대기', '보호자 연락', '의료기관 진료', '예방접종 확인'] },
+          '행정실': { prompt: '수두 의심 환자 발생 시 행정 지원은?', answer: '① 보건교사 요청에 따라 관찰실(격리 공간) 환기 및 소독 물품을 즉시 준비합니다.\n② 2학년 3반 교실 소독을 지원하고 소독 용품(소독제, 일회용 장갑 등)을 공급합니다.\n③ 학교 내 소독 실시 현황을 기록합니다.', keywords: ['관찰실 소독 준비', '교실 소독 지원', '소독 물품 공급', '소독 현황 기록'] },
+          '교장/교감': { prompt: '수두 의심 사례 발생 시 관리자의 역할은?', answer: '① 보건교사로부터 수두 의심 보고를 받고 현황을 파악합니다.\n② 보건교사와 담임교사가 초기 조치를 원활히 수행할 수 있도록 지원합니다.\n③ 수두 예방접종 미완료 학생 현황을 파악하도록 보건교사에게 지시합니다.\n④ 추가 유증상자 발생 여부를 모니터링하도록 지시합니다.', keywords: ['보고 수령 및 현황 파악', '초기 조치 지원', '미접종 학생 현황 파악 지시', '추가 유증상자 모니터링'] }
+        }
+      },
+      {
+        id: 2, title: '수두 확진 및 접촉자 관리', emoji: '🚨', color: '#c0392b', colorClass: 'phase-2-color',
+        date: '4월 9일 (화)',
+        situation: '이수진 보호자로부터 "소아청소년과에서 수두 확진 판정을 받았다"는 연락이 왔습니다. 수두는 2급 감염병으로 즉시 보건소 신고 및 접촉자 관리가 필요합니다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '수두 확진 후 반 학생들 관리와 출결 처리는?', answer: '① 이수진에게 모든 수포에 딱지가 앉을 때까지 등교 중지(완치 후 복귀)를 안내합니다.\n② 2학년 3반 전체 학생을 대상으로 매일 발진·발열 증상 여부를 확인합니다.\n③ 수두 예방접종력이 없는 학생은 즉시 보호자에게 연락하여 의료기관 상담을 안내합니다.\n④ 학생들에게 가려운 부위를 손으로 긁지 않도록 지도합니다.', keywords: ['등교 중지 안내', '매일 증상 확인', '미접종 학생 보호자 연락', '긁지 않도록 지도'] },
+          '보건(담당)교사': { prompt: '수두 확진에 따른 행정 보고와 접촉자 관리는?', answer: '① 수두는 2급 감염병으로 관할 보건소에 즉시 신고합니다.\n② 나이스(NEIS)를 통해 교육지원청에 감염병 발생을 보고합니다.\n③ 2학년 3반 및 이수진과 접촉한 학생 명단을 작성하고 증상 모니터링을 실시합니다.\n④ 수두 예방접종 미완료 학생을 파악하여 예방접종 권고 및 등교 여부를 검토합니다.\n⑤ 가정통신문을 통해 수두 발생 사실 및 예방수칙을 안내합니다.', keywords: ['보건소 신고', 'NEIS 보고', '접촉자 명단 작성', '미접종 학생 파악', '가정통신문 발송'] },
+          '행정실': { prompt: '수두 확진 후 행정적 지원 및 방역 조치는?', answer: '① 보건교사 요청에 따라 가정통신문 인쇄 및 배부를 지원합니다.\n② 교실 및 공용 공간(화장실, 복도 등)에 대한 정기 소독을 실시합니다.\n③ 소독 물품 재고를 확인하고 부족 시 즉시 구매 요청합니다.', keywords: ['가정통신문 지원', '공용 공간 정기 소독', '소독 물품 재고 확인'] },
+          '교장/교감': { prompt: '2급 감염병 발생 시 학교 차원의 지시 사항은?', answer: '① 보건소 신고 및 교육청 보고가 신속히 이루어지도록 지원합니다.\n② 수두 예방접종 미완료 학생에 대한 전교 현황 파악을 지시합니다.\n③ 학교 홈페이지에 수두 발생 관련 예방수칙 공지를 게시합니다.\n④ 학교 내 집단감염 예방을 위한 환경 소독 강화를 지시합니다.', keywords: ['보건소 신고 지원', '전교 미접종 현황 파악', '홈페이지 공지', '환경 소독 강화 지시'] }
+        }
+      },
+      {
+        id: 3, title: '수두 집단 유행 발생', emoji: '💥', color: '#8e44ad', colorClass: 'phase-3-color',
+        date: '4월 12일 (금)',
+        situation: '일주일 사이 2학년을 중심으로 수두 확진자가 총 15명으로 늘었고, 3학년에서도 2명이 추가 발생했습니다. 보건소에서 역학조사관이 파견되어 학교 현장 조사를 실시할 예정입니다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '집단 유행 상황에서 학급 관리와 학생 지도는?', answer: '① NEIS에 추가 감염병 환자를 등록하고 출결을 처리합니다.\n② 발진·발열 증상 학생은 즉시 귀가 조치하고 의료기관 진료를 안내합니다.\n③ 수포 분비물이 묻은 물건(교과서, 문구 등)의 공유를 금지합니다.\n④ 잔류 학생들의 손씻기 및 개인위생 수칙을 철저히 지도합니다.', keywords: ['NEIS 환자 등록', '귀가 조치 및 진료 안내', '물건 공유 금지', '개인위생 지도'] },
+          '보건(담당)교사': { prompt: '집단 유행 시 모니터링 및 보건소 협조 방안은?', answer: '① 역학조사관에게 접촉자 명단, 예방접종력, 발병 일시 등 역학정보를 제공합니다.\n② 매일 신규 환자 수, 완치·복귀 현황을 집계하여 교육청에 보고합니다.\n③ 집단 접촉이 이루어진 공간(교실, 급식실 등)에 대한 집중 소독을 요청합니다.\n④ 수두 예방접종 미완료 학생에게 즉시 접종받도록 강력히 권고합니다.', keywords: ['역학정보 제공', '일일 환자 현황 보고', '집중 소독 요청', '즉시 예방접종 권고'] },
+          '행정실': { prompt: '집단 유행에 따른 전교 방역 강화 계획은?', answer: '① 교실, 화장실, 급식실, 도서관 등 전 시설에 대한 집중 소독을 실시합니다.\n② 소독 담당자를 지정하고 매일 소독 일지를 작성합니다.\n③ 역학조사관 방문을 위한 학교 자료(소독 일지, 시설 현황 등)를 준비합니다.\n④ 학교 내 손소독제를 각 교실 및 공용 공간에 추가 배치합니다.', keywords: ['전 시설 집중 소독', '소독 일지 작성', '역학조사 자료 준비', '손소독제 추가 배치'] },
+          '교장/교감': { prompt: '집단 유행 시 학사 운영 결단과 외부 대응은?', answer: '① 보건소장에게 집단 수두 발생을 정식 신고하고 역학조사에 적극 협조합니다.\n② 유행 규모에 따라 단축수업, 학급 분리, 임시 휴업 등을 검토합니다.\n③ 체육대회, 수학여행 등 단체 활동을 일시 중단 또는 연기합니다.\n④ 학부모 대상 긴급 가정통신문을 발송하고 필요 시 학부모 설명회를 개최합니다.\n⑤ 교육청과 지속 협의하여 학교 운영 방향을 결정합니다.', keywords: ['보건소 신고 및 역학조사 협조', '단축수업·휴업 검토', '단체 활동 중단', '학부모 긴급 통신문', '교육청 협의'] }
+        }
+      }
+    ]
+  },
+  {
+    id: 'tuberculosis',
+    name: '결핵',
+    emoji: '🫁',
+    color: '#27ae60',
+    description: '결핵 의심 증상 학생 발견부터 집단감염 우려 대응까지 3단계 훈련',
+    phases: [
+      {
+        id: 1, title: '결핵 의심 증상 학생 발견', emoji: '🫁', color: '#e67e22', colorClass: 'phase-1-color',
+        date: '5월 13일 (월)',
+        situation: '3학년 2반 담임교사가 박민준 학생이 2주 이상 지속되는 기침과 미열, 체중 감소를 호소한다는 사실을 확인했습니다. 보건교사와 상담 결과 결핵 의심 증상으로 판단되었습니다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '결핵 의심 증상 학생 발견 시 즉각적인 조치는?', answer: '① 박민준에게 즉시 마스크를 착용시키고 보건교사에게 연락합니다.\n② 박민준을 보건실로 동행하여 보건교사의 초기 상담을 받도록 합니다.\n③ 반 학생들에게 증상에 대해 공개하지 않고, 조용히 분리 조치합니다.\n④ 박민준과 최근 밀접 접촉한 학생 현황을 비공개로 파악합니다.', keywords: ['마스크 착용', '보건교사 연락', '보건실 동행', '비공개 분리', '밀접 접촉자 파악'] },
+          '보건(담당)교사': { prompt: '결핵 의심 학생에 대한 초기 조치와 안내는?', answer: '① 박민준의 증상(기침 기간, 발열, 체중 변화 등)을 상세히 파악합니다.\n② 보건교사 본인도 KF94 마스크를 착용하고 접촉을 최소화합니다.\n③ 보호자에게 즉시 연락하여 결핵 의심 증상을 설명하고 당일 결핵 전문 의료기관(보건소 또는 병원) 진료를 강력히 권고합니다.\n④ 박민준을 다른 학생들과 분리된 공간(환기되는 별도 공간)에 대기시킵니다.', keywords: ['증상 상세 파악', 'KF94 마스크 착용', '보호자 연락', '결핵 전문기관 진료 권고', '분리 대기'] },
+          '행정실': { prompt: '결핵 의심 환자 발생 시 행정 지원은?', answer: '① 보건교사 요청에 따라 환기가 잘 되는 별도 대기 공간을 마련합니다.\n② 해당 교실 및 공용 공간에 대한 환기를 즉시 강화합니다.\n③ 방역 소모품(마스크, 소독제, 장갑 등) 재고를 확인하고 보건교사에게 제공합니다.', keywords: ['별도 대기 공간 마련', '환기 강화', '방역 소모품 제공'] },
+          '교장/교감': { prompt: '결핵 의심 사례 발생 시 관리자 역할은?', answer: '① 보건교사로부터 결핵 의심 학생 발생 보고를 받고 현황을 파악합니다.\n② 학생 개인정보 보호를 위해 관련 정보의 비공개 원칙을 교직원에게 안내합니다.\n③ 보건교사가 신속히 조치할 수 있도록 지원하고 의료기관 진료 결과를 보고받을 준비를 합니다.\n④ 진단 결과에 따라 추가 조치를 준비합니다.', keywords: ['현황 파악', '개인정보 비공개 원칙', '보건교사 지원', '진단 결과 보고 대기'] }
+        }
+      },
+      {
+        id: 2, title: '결핵 확진 및 접촉자 조사', emoji: '🚨', color: '#c0392b', colorClass: 'phase-2-color',
+        date: '5월 15일 (수)',
+        situation: '박민준이 보건소 결핵 검사 결과 활동성 결핵으로 확진되었습니다. 결핵은 3급 감염병으로 보건소 역학조사 및 접촉자 흉부 X선 검사가 실시되어야 합니다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '결핵 확진 후 학급 내 접촉자 관리는?', answer: '① 박민준에게 결핵 치료 완료 및 보건소의 등교 허가 시까지 등교 중지를 안내합니다.\n② 보건교사와 협력하여 3학년 2반 전체 학생의 접촉자 명단을 작성합니다.\n③ 학생 개인정보 보호를 철저히 하면서 흉부 X선 검사 안내 가정통신문을 배부합니다.\n④ 학부모에게 결핵에 대한 과도한 공포심을 유발하지 않도록 안내합니다.', keywords: ['등교 중지 안내', '접촉자 명단 작성', '가정통신문 배부', '개인정보 보호', '과도한 공포 예방'] },
+          '보건(담당)교사': { prompt: '결핵 확진에 따른 법정 보고와 역학조사 협조는?', answer: '① 결핵은 3급 감염병으로 관할 보건소에 즉시 신고합니다(확인 후 24시간 내).\n② 나이스(NEIS)를 통해 교육지원청에 결핵 확진 발생을 보고합니다.\n③ 보건소 역학조사관에게 접촉자 명단(동일 교실, 동아리, 방과후 활동 등)을 제공합니다.\n④ 접촉자 흉부 X선 검사 일정을 조율하고 검사 안내문을 작성합니다.\n⑤ IGRA(인터페론 감마 검사) 또는 투베르쿨린 검사 안내를 준비합니다.', keywords: ['보건소 신고', 'NEIS 보고', '접촉자 명단 제공', '흉부 X선 검사 조율', 'IGRA 검사 안내'] },
+          '행정실': { prompt: '결핵 확진 후 학교 내 환경 관리는?', answer: '① 박민준이 주로 생활한 교실, 도서관, 급식실 등에 대한 철저한 환기를 실시합니다.\n② 자연 환기가 어려운 공간은 기계 환기 장치를 가동하고 환기 시간을 늘립니다.\n③ 역학조사 결과에 따라 추가 소독이 필요한 공간을 지정하여 소독합니다.\n④ 가정통신문 인쇄·배부 및 관련 행정 처리를 지원합니다.', keywords: ['철저한 환기 실시', '기계 환기 가동', '지정 공간 소독', '행정 처리 지원'] },
+          '교장/교감': { prompt: '결핵 확진에 따른 학교 차원의 대응은?', answer: '① 보건소의 역학조사에 전면 협조하고 필요한 자료를 신속히 제공합니다.\n② 교직원 및 학생들의 과도한 불안을 예방하기 위해 정확한 정보를 제공합니다.\n③ 결핵 접촉자 전원의 흉부 X선 검사가 이루어지도록 학교 차원에서 안내합니다.\n④ 교육청에 상황을 보고하고 추가 지원 방안을 협의합니다.', keywords: ['역학조사 전면 협조', '정확한 정보 제공', '전원 흉부 X선 검사 안내', '교육청 보고 및 협의'] }
+        }
+      },
+      {
+        id: 3, title: '집단감염 우려 및 추가 대응', emoji: '💥', color: '#8e44ad', colorClass: 'phase-3-color',
+        date: '5월 22일 (수)',
+        situation: '접촉자 흉부 X선 검사 결과, 3학년 2반에서 잠복 결핵 감염자 3명이 추가로 확인되었습니다. 보건소에서는 학교 전체 검진과 추가 역학조사를 요청했습니다.',
+        duration: 300,
+        missions: {
+          '담임교사': { prompt: '잠복 결핵 감염자 추가 발견 시 학급 관리는?', answer: '① 잠복 결핵 감염자에게는 즉시 감염은 아니지만 예방적 치료의 중요성을 설명합니다.\n② 보건교사와 협력하여 추가 검사 대상 학생의 명단을 갱신합니다.\n③ 학생들이 결핵에 대해 올바르게 이해할 수 있도록 기초 정보를 제공합니다.\n④ 결석·조퇴 학생의 상황을 지속 모니터링하고 보건교사에게 보고합니다.', keywords: ['잠복 결핵 설명', '추가 검사 명단 갱신', '결핵 기초 정보 제공', '상황 지속 모니터링'] },
+          '보건(담당)교사': { prompt: '집단감염 우려 상황에서의 보건 대응은?', answer: '① 보건소 역학조사관과 긴밀히 협력하여 추가 접촉자를 파악합니다.\n② 전교생 및 교직원 대상 흉부 X선 검사 일정을 학교와 보건소가 공동으로 조율합니다.\n③ 잠복 결핵 감염자에게 예방적 치료(잠복 결핵 치료) 의의와 방법을 안내합니다.\n④ 매일 신규 의심 증상자 현황을 집계하여 교장과 교육청에 보고합니다.\n⑤ 학교 전체 환기 실태를 점검하고 개선이 필요한 공간을 보고합니다.', keywords: ['역학조사관 협력', '전교생 검사 조율', '잠복 결핵 치료 안내', '일일 현황 보고', '환기 실태 점검'] },
+          '행정실': { prompt: '집단 감염 우려 시 학교 환경 관리 강화는?', answer: '① 전교 흉부 X선 검사를 위한 학교 내 검사 장소 및 동선을 준비합니다.\n② 모든 교실과 공용 공간에 대해 정기 소독 주기를 단축하고 집중 환기를 실시합니다.\n③ 교직원 대상으로도 결핵 관련 예방 물품(마스크 등)을 배포합니다.\n④ 역학조사 관련 행정 서류 및 현황 자료를 신속히 준비·제출합니다.', keywords: ['검사 장소 준비', '소독 주기 단축', '교직원 예방 물품 배포', '행정 서류 준비'] },
+          '교장/교감': { prompt: '학교 차원의 위기 대응과 학사 운영 결단은?', answer: '① 보건소장에게 집단 결핵 발생을 공식 보고하고 역학조사에 계속 협조합니다.\n② 교육청과 협의하여 학교 운영 방향(단축수업, 임시 휴업 등)을 결정합니다.\n③ 단체 활동(수학여행, 체육대회 등)을 일시 중단하여 집단 접촉 기회를 최소화합니다.\n④ 학부모에게 상황을 투명하게 설명하는 안내문을 발송하고, 필요 시 설명회를 개최합니다.\n⑤ 결핵 검진 결과 양성 학생에 대한 개인정보 보호와 학교생활 정상화 방안을 마련합니다.', keywords: ['보건소 공식 보고', '교육청 협의 및 학사 결정', '단체 활동 중단', '학부모 안내문 발송', '개인정보 보호 방안'] }
+        }
+      }
+    ]
+  }
+];
+
+// ═══════════════════════════════════════════════════════
+//  SCENARIO MANAGEMENT
+// ═══════════════════════════════════════════════════════
+function getScenarios() {
+  try {
+    const saved = localStorage.getItem('ttx_admin_scenarios');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length) return parsed;
+      // 이중 직렬화된 경우 한 번 더 파싱
+      if (typeof parsed === 'string') {
+        const inner = JSON.parse(parsed);
+        if (Array.isArray(inner) && inner.length) return inner;
+      }
+    }
+  } catch {}
+  return JSON.parse(JSON.stringify(DEFAULT_SCENARIOS));
+}
+
+// Firebase에는 JSON 문자열로 저장 (교장/교감 등 슬래시 키 오류 방지)
+function scenariosToFirebase(scenarios) {
+  return JSON.stringify(scenarios);
+}
+function scenariosFromFirebase(raw) {
+  if (!raw) return null;
+  if (typeof raw === 'string') { try { return JSON.parse(raw); } catch { return null; } }
+  if (Array.isArray(raw)) return raw; // 구버전 호환
+  return null;
+}
+
+function saveScenarios(scenarios) {
+  localStorage.setItem('ttx_admin_scenarios', JSON.stringify(scenarios));
+  // Firebase에도 동시 저장 (JSON 문자열로 저장해 슬래시 키 오류 방지)
+  if (typeof db !== 'undefined') {
+    db.ref('settings/scenarios').set(scenariosToFirebase(scenarios))
+      .catch(e => console.warn('시나리오 Firebase 저장 실패:', e));
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  GROUP COUNT MANAGEMENT
+// ═══════════════════════════════════════════════════════
+const MIN_GROUPS = 1;
+const MAX_GROUPS = 9;
+function getGroupCount() {
+  return parseInt(localStorage.getItem('ttx_group_count') || '4');
+}
+function saveGroupCount(n) {
+  localStorage.setItem('ttx_group_count', String(n));
+  if (typeof db !== 'undefined') db.ref('settings/groupCount').set(n);
+}
+function changeGroupCount(delta) {
+  let n = Math.min(MAX_GROUPS, Math.max(MIN_GROUPS, getGroupCount() + delta));
+  saveGroupCount(n);
+  renderAdminGroupCount();
+  showToast(`✅ 조 수가 ${n}개로 변경되었습니다`);
+}
+function renderAdminGroupCount() {
+  // 관리자 패널은 admin.html 로 분리 — index에서는 호출만 무해하게 처리
+  const n = getGroupCount();
+  const d = document.getElementById('admin-group-count-display');
+  const num = document.getElementById('admin-group-count-num');
+  if (d) d.textContent = `${n}조`;
+  if (num) num.textContent = n;
+  const btns = document.querySelectorAll('.btn-group-count');
+  if (btns[0]) btns[0].disabled = n <= MIN_GROUPS;
+  if (btns[1]) btns[1].disabled = n >= MAX_GROUPS;
+}
+
+const ROLE_ICONS = {
+  '모더레이터': '🎙️', '담임교사': '📚', '보건(담당)교사': '🩺', '영양(교)사': '🥗',
+  '행정실': '📋', '교장/교감': '🏛️', '교육(지원)청': '🏢', '유관기관': '🤝',
+  '보건소': '🏥', '시·군·구청': '🏙️', '도청': '🗺️', '식품의약품안전청': '💊'
+};
+// 유관기관 그룹: 보건소·시군구청·도청·식품의약품안전청 → '유관기관' 하나로 통합
+const AGENCY_ROLES = ['보건소', '시·군·구청', '도청', '식품의약품안전청'];
+const ALL_ROLES = ['담임교사', '보건(담당)교사', '영양(교)사', '행정실', '교장/교감', '교육(지원)청', '유관기관'];
+const DISPLAY_ROLES = ['담임교사', '보건(담당)교사', '영양(교)사', '행정실', '교장/교감', '교육(지원)청', '유관기관'];
+const PARTICIPANT_ROLES = ['모더레이터', '담임교사', '보건(담당)교사', '영양(교)사', '행정실', '교장/교감', '교육(지원)청', '유관기관'];
+
+// 역할 정규화: 기존 데이터의 보건소/시군구청/도청/식의약청 → '유관기관'으로 변환
+function normalizeRole(role) {
+  return AGENCY_ROLES.includes(role) ? '유관기관' : role;
+}
+
+// 단계의 활성 역할 반환 (activeRoles 없으면 missions 키 전체를 기본값으로 사용) - 유관기관 정규화
+function getActiveRoles(phase) {
+  const raw = phase.activeRoles ?? Object.keys(phase.missions);
+  return [...new Set(raw.map(normalizeRole))];
+}
+// 시나리오 전 단계에서 한 번이라도 활성화된 역할 집합 반환
+function getRolesUsedInScenario(scenario) {
+  const used = new Set();
+  scenario.phases.forEach(p => getActiveRoles(p).forEach(r => used.add(r)));
+  return used;
+}
+
+function getBaseRole(role) { return normalizeRole(role); }
+// Firebase 키에 사용 불가능한 / 를 | 로 치환 (교장/교감 등 대응)
+function safeFirebaseKey(str) { return String(str).replace(/\//g, '|'); }
+// 개인 응답 키: "역할:이름" (/ 치환 적용)
+function getRKey() { return `${safeFirebaseKey(myRole)}:${myName}`; }
+// 특정 역할의 모든 참가자 응답 목록 반환
+function getRoleEntries(phaseResponses, participants, role) {
+  const people = Object.values(participants).filter(p => p.role === role);
+  if (people.length === 0) {
+    // 프록시 응답
+    return [{ name: null, key: role, text: phaseResponses[role] || '', submitted: phaseResponses[`${role}_submitted`] || false, isProxy: phaseResponses[`${role}_proxy`] || false }];
+  }
+  return people.map(p => {
+    const personName = p.name || Object.entries(participants).find(([,val]) => val === p)?.[0] || '';
+    const k = `${safeFirebaseKey(role)}:${personName}`;
+    return { name: personName, key: k, text: phaseResponses[k] || '', submitted: phaseResponses[`${k}_submitted`] || false, isProxy: false };
+  });
+}
+// 역할 전체 제출 여부 (1명 이상 제출)
+function isAnySubmitted(phaseResponses, participants, role) {
+  return getRoleEntries(phaseResponses, participants, role).some(e => e.submitted);
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  KEYWORD MATCH (띄어쓰기 무시 비교)
+// ═══════════════════════════════════════════════════════
+function kwMatch(text, kw) {
+  const normalize = s => s.replace(/\s/g, '');
+  const kwBase = normalize(kw.split('·')[0].replace(/[·\/]/g, ''));
+  const textNorm = normalize(text);
+  return textNorm.includes(kwBase);
+}
+// ═══════════════════════════════════════════════════════
+//  ACTIVE SESSION STATE
+// 배포 URL (로컬 파일로 실행 시 QR코드에 이 주소를 사용)
+const PRODUCTION_URL = 'https://medimedi365edu-droid.github.io/Infectious-Disease-Simulation-Training/';
+
+// ═══════════════════════════════════════════════════════
+let currentScenarioId = '';
+let ACTIVE_SCENARIO = null;
+let ACTIVE_PHASES = [];
+let STORAGE_KEY = '';
+let CHANNEL_NAME = '';
+let myName = '';
+let myRole = '';
+let myGroup = '';
+let timerInterval = null;
+let pendingRender = false;
+
+function selectScenario(id) {
+  const scenarios = getScenarios();
+  const sc = scenarios.find(s => s.id === id);
+  if (!sc) return;
+  currentScenarioId = id;
+  ACTIVE_SCENARIO = sc;
+  ACTIVE_PHASES = sc.phases;
+  // STORAGE_KEY / CHANNEL_NAME will be set after group selection
+
+  document.getElementById('login-scenario-icon').textContent = sc.emoji;
+  document.getElementById('login-scenario-title').innerHTML = `${sc.name} 위기대응<br>협력 훈련`;
+
+  // Update phase bar labels
+  ACTIVE_PHASES.forEach((p, i) => {
+    const el = document.getElementById(`step-${i + 1}`);
+    if (el) el.innerHTML = `<span class="step-num">${i + 1}</span>${p.emoji} ${p.title}`;
+  });
+
+  // Render group buttons
+  const NUM_GROUPS = getGroupCount(); // 관리자 설정값 사용
+  const groupGrid = document.getElementById('group-grid');
+  const groupEmojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣'];
+  groupGrid.innerHTML = Array.from({length: NUM_GROUPS}, (_, i) => `
+    <button class="group-btn" data-group="${i+1}" onclick="selectGroup(${i+1})">
+      <span class="group-icon">${groupEmojis[i]}</span>${i+1}조
+    </button>
+  `).join('');
+  myGroup = '';
+  selectedRole = '';
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('input-name').value = '';
+  document.getElementById('btn-join').disabled = true;
+
+  // 시나리오에서 한 번도 활성화되지 않는 역할 버튼 비활성화 (기본값)
+  const usedRoles = getRolesUsedInScenario(sc);
+  document.querySelectorAll('.role-btn:not(.moderator-btn)').forEach(btn => {
+    const role = btn.dataset.role;
+    if (!role) return;
+    btn.querySelectorAll('.new-badge').forEach(el => el.remove());
+    btn.classList.remove('disabled');
+    btn.classList.toggle('disabled', !usedRoles.has(normalizeRole(role)));
+  });
+
+  // URL에 방 코드가 있으면 Firebase에서 현재 단계를 조회해 역할 필터 갱신
+  const urlRoom2 = new URLSearchParams(location.search).get('room');
+  if (urlRoom2) {
+    getRoomRef(urlRoom2).get().then(async snap => {
+      if (!snap.exists()) return;
+      const roomState = snap.val();
+      const curPhase = roomState.currentPhase || 0;
+
+      // Firebase에서 최신 시나리오 직접 조회 (캐시 타이밍 문제 방지)
+      let freshSc = sc;
+      try {
+        const scSnap = await db.ref('settings/scenarios').get();
+        if (scSnap.exists()) {
+          const freshScenarios = scenariosFromFirebase(scSnap.val());
+          if (freshScenarios) localStorage.setItem('ttx_admin_scenarios', JSON.stringify(freshScenarios));
+          const found = freshScenarios && freshScenarios.find(s => s.id === currentScenarioId);
+          if (found) {
+            freshSc = found;
+            ACTIVE_SCENARIO = found;
+            ACTIVE_PHASES = found.phases;
+          }
+        }
+      } catch(e) {}
+
+      // 로비(0단계) 또는 1단계: 1단계 역할만 표시 (팝업 없음)
+      // 2단계 이후 중간 입장: 해당 단계 역할 표시 + 팝업
+      const targetPhaseIdx = (curPhase === 0)
+        ? 0 // 로비면 1단계 기준
+        : (roomState.showingFeedback && curPhase < freshSc.phases.length)
+          ? curPhase
+          : curPhase - 1;
+      const targetPhase = freshSc.phases[targetPhaseIdx];
+      if (!targetPhase) return;
+
+      const activeRoles = getActiveRoles(targetPhase);
+      const phase1RolesList = getActiveRoles(freshSc.phases[0]);
+
+      // 1단계 진입: 활성 역할만 남기고 나머지 숨김 (팝업 없음)
+      // 2단계 이후 중간 입장: 팝업 표시
+      const isMidJoin = curPhase >= 2 || (roomState.showingFeedback && curPhase >= 1);
+
+      document.querySelectorAll('.role-btn:not(.moderator-btn)').forEach(btn => {
+        const r = normalizeRole(btn.dataset.role);
+        if (!r) return;
+        btn.querySelectorAll('.new-badge').forEach(el => el.remove());
+        btn.classList.remove('disabled');
+
+        if (!activeRoles.includes(r)) {
+          btn.style.display = 'none';
+        } else {
+          btn.style.display = '';
+          if (isMidJoin && !phase1RolesList.includes(r)) {
+            const badge = document.createElement('span');
+            badge.className = 'new-badge';
+            badge.textContent = '신규';
+            btn.appendChild(badge);
+          }
+        }
+      });
+
+      if (isMidJoin) {
+        // 2단계 이후 중간 입장: 배너 + 팝업 표시
+        const hint = document.getElementById('session-hint-text');
+        if (hint) {
+          const phaseLabel = (roomState.showingFeedback && curPhase < sc.phases.length)
+            ? `${curPhase + 1}단계`
+            : `${curPhase}단계`;
+          hint.className = 'session-hint mid-join-notice';
+          hint.innerHTML =
+            `⚠️ 현재 <strong>${targetPhase.emoji} ${targetPhase.title} (${phaseLabel})</strong> 진행 중입니다.<br>` +
+            `이 단계에서 선택 가능한 역할만 표시됩니다.<br>` +
+            `<small style="opacity:0.8">💡 <strong>신규</strong> 표시는 이번 단계에서 새로 참여하는 역할입니다.</small>`;
+          hint.style.borderLeftColor = targetPhase.color;
+        }
+        showMidJoinModal(targetPhase, activeRoles, phase1RolesList, curPhase, roomState.showingFeedback, sc.phases.length);
+      }
+    }).catch(() => {});
+  }
+
+  document.getElementById('screen-home').style.display = 'none';
+  document.getElementById('screen-login').style.display = 'flex';
+}
+
+function selectGroup(num) {
+  myGroup = num;
+  document.querySelectorAll('.group-btn').forEach(b => {
+    b.classList.toggle('selected', parseInt(b.dataset.group) === num);
+  });
+  STORAGE_KEY = `ttx_${currentScenarioId}_g${num}_v1`;
+  CHANNEL_NAME = `ttx_${currentScenarioId}_g${num}_ch`;
+  updateJoinBtn();
+}
+
+function goHome() {
+  document.getElementById('screen-login').style.display = 'none';
+  document.getElementById('screen-exercise').style.display = 'none';
+  document.getElementById('screen-feedback').style.display = 'none';
+  document.getElementById('font-size-widget').style.display = 'none';
+  document.getElementById('screen-home').style.display = 'flex';
+  myName = ''; myRole = ''; myGroup = ''; selectedRole = '';
+  document.getElementById('input-name').value = '';
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('btn-join').disabled = true;
+  if (dbRef) { dbRef.off(); dbRef = null; }
+  roomCode = ''; _cachedState = null;
+  // URL에서 room 파라미터 제거
+  const url = new URL(location.href);
+  url.searchParams.delete('room');
+  history.replaceState({}, '', url.toString());
+  renderHomeScenarios();
+}
+
+function leaveToLogin() {
+  // 참가자 목록에서 나를 제거
+  if (myName && dbRef) {
+    const state = getState();
+    if (state.participants && state.participants[myName]) {
+      delete state.participants[myName];
+      saveState(state);
+    }
+  }
+  if (dbRef) { dbRef.off(); dbRef = null; }
+  roomCode = ''; _cachedState = null;
+  // 화면 전환: 로그인 화면으로 (조·이름·역할 초기화)
+  document.getElementById('screen-exercise').style.display = 'none';
+  document.getElementById('font-size-widget').style.display = 'none';
+  myName = ''; myRole = ''; selectedRole = '';
+  document.getElementById('input-name').value = '';
+  document.querySelectorAll('.role-btn').forEach(b => {
+    b.classList.remove('selected');
+    b.style.display = ''; // 숨겨진 역할 버튼 복원
+    b.querySelectorAll('.new-badge').forEach(el => el.remove());
+  });
+  document.querySelectorAll('.group-btn').forEach(b => b.classList.remove('selected'));
+  myGroup = ''; STORAGE_KEY = ''; CHANNEL_NAME = '';
+  document.getElementById('btn-join').disabled = true;
+  document.getElementById('my-group-header').style.display = 'none';
+  document.getElementById('screen-login').style.display = 'flex';
+}
+
+// ═══════════════════════════════════════════════════════
+//  HOME RENDER
+// ═══════════════════════════════════════════════════════
+function renderHomeScenarios() {
+  const scenarios = getScenarios();
+  const grid = document.getElementById('scenario-grid');
+  grid.innerHTML = scenarios.map(sc => `
+    <button class="scenario-card-btn" onclick="selectScenario('${sc.id}')">
+      <span class="sc-badge" style="background:${sc.color}">${sc.name}</span>
+      <span class="sc-emoji">${sc.emoji}</span>
+      <div class="sc-name">${sc.name} 대응 훈련</div>
+      <div class="sc-desc">${sc.description}</div>
+    </button>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  FIREBASE INIT
+// ═══════════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyC8KDLecYY5kNGsXxflRgP8-PP_S-DIU54",
+  authDomain: "infectious-disease-simul-e658f.firebaseapp.com",
+  databaseURL: "https://infectious-disease-simul-e658f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "infectious-disease-simul-e658f",
+  storageBucket: "infectious-disease-simul-e658f.firebasestorage.app",
+  messagingSenderId: "746776461566",
+  appId: "1:746776461566:web:181f03437230510d66a5af"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ═══════════════════════════════════════════════════════
+//  ROOM (방) 관리
+// ═══════════════════════════════════════════════════════
+let roomCode = ''; // e.g. "INFL-3조-A4F2"
+let dbRef = null;  // Firebase reference for current room
+
+function generateRoomCode(scenarioId, groupNum) {
+  const rand = Math.random().toString(36).substring(2,6).toUpperCase();
+  return `${scenarioId.substring(0,4).toUpperCase()}-${groupNum}조-${rand}`;
+}
+
+function getRoomRef(code) {
+  return db.ref('rooms/' + code.replace(/[.#$\[\]]/g,'_'));
+}
+
+// 모더레이터: 방 생성
+async function createRoom(scenarioId, groupNum) {
+  roomCode = generateRoomCode(scenarioId, groupNum);
+  dbRef = getRoomRef(roomCode);
+  const state = defaultState();
+  state.scenarioId = scenarioId;
+  state.groupNum = groupNum;
+  state.roomCode = roomCode;
+  state.groupCount = getGroupCount();
+  state.createdAt = Date.now();
+  _cachedState = normalizeState(state); // 즉시 캐시
+  // 방 생성 시 로컬 시나리오를 Firebase에 즉시 동기화
+  // (localStorage에만 있던 커스텀 시나리오를 참가자들도 받을 수 있게)
+  await db.ref('settings/scenarios').set(scenariosToFirebase(getScenarios())).catch(() => {});
+  await dbRef.set(state);
+  // URL에 roomCode 반영
+  const url = new URL(location.href);
+  url.searchParams.set('room', roomCode);
+  history.replaceState({}, '', url.toString());
+  listenRoom();
+  return roomCode;
+}
+
+// 참가자 / 모더레이터 재접속: 방 참가
+async function joinRoom(code) {
+  roomCode = code;
+  dbRef = getRoomRef(code);
+  const snap = await dbRef.get();
+  if (!snap.exists()) return false;
+  const data = snap.val();
+  // 시나리오/그룹 복원
+  currentScenarioId = data.scenarioId || '';
+  myGroup = data.groupNum || '';
+  STORAGE_KEY = `ttx_${currentScenarioId}_g${myGroup}_v1`;
+  CHANNEL_NAME = `ttx_${currentScenarioId}_g${myGroup}_ch`;
+  // Firebase에서 최신 시나리오 직접 로드 (관리자 수정사항 즉시 반영)
+  try {
+    const scSnap = await db.ref('settings/scenarios').get();
+    if (scSnap.exists()) {
+      const freshScenarios = scenariosFromFirebase(scSnap.val());
+      if (freshScenarios) localStorage.setItem('ttx_admin_scenarios', JSON.stringify(freshScenarios));
+      const sc = freshScenarios && freshScenarios.find(s => s.id === currentScenarioId);
+      if (sc) { ACTIVE_SCENARIO = sc; ACTIVE_PHASES = sc.phases; }
+    }
+  } catch {}
+  if (!ACTIVE_SCENARIO) {
+    const sc = getScenarios().find(s => s.id === currentScenarioId);
+    if (sc) { ACTIVE_SCENARIO = sc; ACTIVE_PHASES = sc.phases; }
+  }
+  // 즉시 캐시에 저장 (listenRoom 첫 이벤트 전에도 getState()가 정상 동작하도록)
+  _cachedState = normalizeState(data);
+  listenRoom();
+  return true;
+}
+
+function listenRoom() {
+  if (!dbRef) return;
+  // 중복 리스너 방지
+  dbRef.off('value');
+  dbRef.on('value', (snap) => {
+    try {
+      if (!snap.exists()) return;
+      const raw = snap.val();
+      const prevTimerRunning = _cachedState ? _cachedState.timerRunning : false;
+      const prevPhase = _cachedState ? _cachedState.currentPhase : -1;
+      _cachedState = normalizeState(raw);
+      // 타이머 시작/정지 또는 단계 변경 시엔 타이핑 중이어도 즉시 리렌더 (제출 버튼 disabled 버그 방지)
+      const forceRender = _cachedState.timerRunning !== prevTimerRunning
+                       || _cachedState.currentPhase !== prevPhase;
+      if (!forceRender && isTyping()) { pendingRender = true; return; }
+      pendingRender = false;
+      renderExercise();
+    } catch(err) {
+      console.error('listenRoom error:', err);
+    }
+  });
+}
+
+// Firebase에서 온 데이터에 누락 필드 보완
+// ⚠️ Firebase는 빈 {}를 null로 저장하므로 반드시 null → {} 변환 필요
+function normalizeState(data) {
+  if (!data || typeof data !== 'object') return defaultState();
+  // participants 안의 각 항목도 null 체크
+  const rawPart = data.participants;
+  let participants = {};
+  if (rawPart && typeof rawPart === 'object') {
+    Object.entries(rawPart).forEach(([k, v]) => {
+      if (v && typeof v === 'object' && v.role) {
+        // name 필드가 누락됐으면 Firebase 키(= 이름)로 보완
+        participants[k] = v.name ? v : { ...v, name: k };
+      }
+    });
+  }
+  // responses 안의 각 phase도 null 체크
+  const rawResp = data.responses;
+  let responses = {};
+  if (rawResp && typeof rawResp === 'object') {
+    Object.entries(rawResp).forEach(([k, v]) => {
+      responses[k] = (v && typeof v === 'object') ? v : {};
+    });
+  }
+  // roleAnnouncement null 체크
+  const ra = data.roleAnnouncement;
+  const roleAnnouncement = (ra && ra.assignments && typeof ra.assignments === 'object') ? ra : null;
+  return {
+    currentPhase: (typeof data.currentPhase === 'number') ? data.currentPhase : 0,
+    phaseStartTime: data.phaseStartTime ?? null,
+    timerRunning: data.timerRunning === true,
+    timerPaused: data.timerPaused === true,
+    timerPausedRemaining: data.timerPausedRemaining ?? null,
+    phaseDuration: data.phaseDuration ?? null,
+    showingFeedback: data.showingFeedback === true,
+    participants,
+    responses,
+    scores: (data.scores && typeof data.scores === 'object') ? data.scores : {},
+    scoreWeights: (data.scoreWeights && typeof data.scoreWeights === 'object') ? data.scoreWeights : {},
+    scoreSubmitted: (data.scoreSubmitted && typeof data.scoreSubmitted === 'object') ? data.scoreSubmitted : {},
+    roleHistory: (data.roleHistory && typeof data.roleHistory === 'object') ? data.roleHistory : {},
+    roleAnnouncement,
+    scenarioId: data.scenarioId || '',
+    groupNum: data.groupNum || '',
+    roomCode: data.roomCode || '',
+    createdAt: data.createdAt ?? null,
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+//  STATE & SYNC (Firebase 기반)
+// ═══════════════════════════════════════════════════════
+let _cachedState = null;
+
+function defaultState() {
+  return { currentPhase: 0, phaseStartTime: null, timerRunning: false, timerPaused: false,
+    timerPausedRemaining: null, showingFeedback: false, participants: {}, responses: {}, scores: {}, scoreWeights: {}, scoreSubmitted: {}, roleHistory: {}, roleAnnouncement: null };
+}
+
+function getState() {
+  if (_cachedState) return JSON.parse(JSON.stringify(_cachedState));
+  return defaultState();
+}
+
+function saveState(state) {
+  // participants/responses가 빈 객체면 Firebase가 null로 저장하므로
+  // sentinel 값을 넣어서 null 저장 방지
+  const toSave = JSON.parse(JSON.stringify(state));
+  if (!toSave.participants || Object.keys(toSave.participants).length === 0) {
+    toSave.participants = { _placeholder: true };
+  }
+  if (!toSave.responses || Object.keys(toSave.responses).length === 0) {
+    toSave.responses = { _placeholder: true };
+  }
+  _cachedState = normalizeState(toSave);
+  if (dbRef) dbRef.set(toSave);
+}
+
+function broadcast(type, data) {
+  // Firebase의 on('value') 리스너가 실시간 브로드캐스트 역할을 대체함
+  // 추가 액션 없이 saveState만으로 동기화됨
+}
+
+function isTyping() { const ta = document.getElementById('my-textarea'); return ta && document.activeElement === ta; }
+
+function initChannel() {
+  // Firebase listener가 대체 — 별도 채널 불필요
+}
+
+// ═══════════════════════════════════════════════════════
+//  상황 글씨 크기 조절
+// ═══════════════════════════════════════════════════════
+//  글씨 크기 조절 (상황·문제·키워드·입력창 종합)
+// ═══════════════════════════════════════════════════════
+const FONT_SIZE_KEY   = 'ttx_content_font_offset';
+const FONT_OFFSET_MIN = -2;   // 최소 -2 (12px)
+const FONT_OFFSET_MAX = 10;   // 최대 +10 (24px)
+const FONT_OFFSET_STEP = 2;
+
+// 각 요소의 기본 폰트 크기 (px)
+const FONT_BASE = {
+  scenario     : 14,   // 상황 본문
+  mission      : 14,   // 문제(미션) 본문
+  keyword      : 12,   // 키워드 힌트
+  tag          : 11,   // 키워드 태그
+  textarea     : 14,   // 답변 입력창
+  responseText : 13,   // 다른 역할 작성 현황 본문
+  proxyHint    : 12,   // 대리입력 힌트
+  fbSectionP   : 13,   // 피드백 카드 내용
+  fbSectionH4  : 12,   // 피드백 카드 라벨
+  fbSummaryP   : 14,   // 피드백 요약 본문
+  fbSummaryH3  : 16,   // 피드백 요약 제목
+};
+
+function getFontOffset() {
+  return parseInt(localStorage.getItem(FONT_SIZE_KEY) || '0');
+}
+
+function applyFontSize() {
+  const offset = getFontOffset();
+
+  const set = (selector, base) =>
+    document.querySelectorAll(selector).forEach(el => {
+      el.style.fontSize = (base + offset) + 'px';
+    });
+
+  // 상황 본문
+  const sb = document.getElementById('scenario-body-text');
+  if (sb) sb.style.fontSize = (FONT_BASE.scenario + offset) + 'px';
+
+  // 문제(미션) 본문 / 키워드 / 태그 / 입력창
+  set('.mission-prompt',      FONT_BASE.mission);
+  set('.keyword-hint',        FONT_BASE.keyword);
+  set('.kw-tag',              FONT_BASE.tag);
+  set('.response-textarea',   FONT_BASE.textarea);
+
+  // 다른 역할 작성 현황
+  set('.response-text',       FONT_BASE.responseText);
+
+  // 대리입력 힌트
+  set('.proxy-mission-hint',  FONT_BASE.proxyHint);
+
+  // 피드백 카드 내용 / 라벨
+  set('.fb-section p',        FONT_BASE.fbSectionP);
+  set('.fb-section h4',       FONT_BASE.fbSectionH4);
+
+  // 피드백 요약
+  set('.fb-summary p',        FONT_BASE.fbSummaryP);
+  set('.fb-summary h3',       FONT_BASE.fbSummaryH3);
+
+  // 위젯 단계 표시 업데이트
+  const stepLabel = document.getElementById('fw-step-label');
+  if (stepLabel) {
+    stepLabel.textContent = offset === 0 ? '기본' : (offset > 0 ? `+${offset}` : `${offset}`);
+  }
+}
+
+function adjustFontSize(delta) {
+  const current = getFontOffset();
+  const next = Math.min(FONT_OFFSET_MAX, Math.max(FONT_OFFSET_MIN, current + delta));
+  localStorage.setItem(FONT_SIZE_KEY, next);
+  applyFontSize();
+}
+
+function resetFontSize() {
+  localStorage.setItem(FONT_SIZE_KEY, 0);
+  applyFontSize();
+}
+
+// 이전 함수명 호환 (renderExercise에서 호출)
+function applySituationFontSize() { applyFontSize(); }
+
+// ═══════════════════════════════════════════════════════
+//  중간 입장 안내 팝업
+// ═══════════════════════════════════════════════════════
+function showMidJoinModal(targetPhase, activeRoles, phase1RolesList, curPhase, showingFeedback, totalPhases) {
+  const phaseLabel = (showingFeedback && curPhase < totalPhases)
+    ? `${curPhase + 1}단계`
+    : `${curPhase}단계`;
+
+  document.getElementById('mid-join-modal-phase-icon').textContent = targetPhase.emoji;
+  document.getElementById('mid-join-modal-title').textContent =
+    `${targetPhase.title} (${phaseLabel}) 진행 중`;
+  document.getElementById('mid-join-modal-desc').textContent =
+    '훈련이 이미 시작되었습니다. 아래 역할 중 하나를 선택해 참여하세요.';
+
+  const rolesBox = document.getElementById('mid-join-modal-roles');
+  rolesBox.innerHTML = '';
+  activeRoles.forEach(role => {
+    const isNew = !phase1RolesList.includes(role);
+    const icon = ROLE_ICONS[role] || '';
+    const chip = document.createElement('div');
+    chip.style.cssText =
+      `display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:20px;font-size:13px;font-weight:600;` +
+      `background:${isNew ? '#e8f8ee' : '#f0f4f8'};color:${isNew ? '#1a7a3a' : '#1a3a5c'};` +
+      `border:1.5px solid ${isNew ? '#82d4a0' : '#c8d8ea'};`;
+    chip.innerHTML = `${icon} ${role}${isNew ? ' <span style="font-size:10px;background:#28a745;color:white;border-radius:3px;padding:1px 4px;margin-left:2px">신규</span>' : ''}`;
+    rolesBox.appendChild(chip);
+  });
+
+  const modal = document.getElementById('mid-join-modal');
+  modal.style.display = 'flex';
+}
+
+// ═══════════════════════════════════════════════════════
+//  QR 코드 표시
+// ═══════════════════════════════════════════════════════
+function showQRModal(code) {
+  const modal = document.getElementById('qr-modal');
+  const box = document.getElementById('qr-code-box');
+  const label = document.getElementById('qr-room-label');
+  const urlText = document.getElementById('qr-url-text');
+  box.innerHTML = '';
+  const baseHref = (location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? PRODUCTION_URL : location.href;
+  const url = new URL(baseHref);
+  url.searchParams.set('room', code);
+  const fullUrl = url.toString();
+  label.textContent = '방 코드: ' + code;
+  urlText.textContent = fullUrl;
+  // 복사 버튼 초기화
+  const copyBtn = document.getElementById('btn-copy-url');
+  if (copyBtn) { copyBtn.textContent = '📋 URL 복사'; copyBtn.style.background = '#eaf2ff'; copyBtn.style.color = '#1a3a5c'; copyBtn.style.borderColor = '#b3d1f5'; }
+  new QRCode(box, { text: fullUrl, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
+  modal.style.display = 'flex';
+}
+
+function copyQRUrl() {
+  const urlText = document.getElementById('qr-url-text');
+  const copyBtn = document.getElementById('btn-copy-url');
+  if (!urlText || !urlText.textContent) return;
+  navigator.clipboard.writeText(urlText.textContent).then(() => {
+    copyBtn.textContent = '✅ 복사됨!';
+    copyBtn.style.background = '#27ae60';
+    copyBtn.style.color = 'white';
+    copyBtn.style.borderColor = '#27ae60';
+    setTimeout(() => {
+      copyBtn.textContent = '📋 URL 복사';
+      copyBtn.style.background = '#eaf2ff';
+      copyBtn.style.color = '#1a3a5c';
+      copyBtn.style.borderColor = '#b3d1f5';
+    }, 2000);
+  }).catch(() => {
+    // clipboard API 실패 시 fallback
+    const ta = document.createElement('textarea');
+    ta.value = urlText.textContent;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    copyBtn.textContent = '✅ 복사됨!';
+    copyBtn.style.background = '#27ae60';
+    copyBtn.style.color = 'white';
+    copyBtn.style.borderColor = '#27ae60';
+    setTimeout(() => {
+      copyBtn.textContent = '📋 URL 복사';
+      copyBtn.style.background = '#eaf2ff';
+      copyBtn.style.color = '#1a3a5c';
+      copyBtn.style.borderColor = '#b3d1f5';
+    }, 2000);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  LOGIN
+// ═══════════════════════════════════════════════════════
+let selectedRole = '';
+let qrLobbyMode = false; // QR로 입장 + 대기실(phase 0): 역할 선택 불필요
+
+document.querySelectorAll('.role-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedRole = btn.dataset.role;
+    const codeGroup = document.getElementById('room-code-group');
+    if (codeGroup) codeGroup.style.display = selectedRole === '모더레이터' ? 'none' : '';
+    updateJoinBtn();
+  });
+});
+document.getElementById('input-name').addEventListener('input', updateJoinBtn);
+function updateJoinBtn() {
+  const name = document.getElementById('input-name').value.trim();
+  if (qrLobbyMode) { document.getElementById('btn-join').disabled = !name; return; }
+  const urlRoom = new URLSearchParams(location.search).get('room');
+  const manualRoom = document.getElementById('room-code-input')?.value.trim();
+  const hasRoom = !!(urlRoom || manualRoom);
+  const isMod = selectedRole === '모더레이터';
+  document.getElementById('btn-join').disabled = !(name && selectedRole && myGroup && (isMod || hasRoom));
+}
+
+let _verifiedRoomCode = '';
+function onRoomCodeInput() {
+  _verifiedRoomCode = '';
+  const status = document.getElementById('room-code-status');
+  if (status) { status.style.color = 'var(--muted)'; status.textContent = '방 코드를 입력하면 조·역할이 자동으로 설정됩니다.'; }
+  updateJoinBtn();
+}
+async function verifyRoomCode() {
+  const input = document.getElementById('room-code-input');
+  const code = input ? input.value.trim().toUpperCase() : '';
+  const status = document.getElementById('room-code-status');
+  const btn = document.getElementById('room-code-verify-btn');
+  if (!code) { if (status) { status.style.color = '#c0392b'; status.textContent = '방 코드를 입력해 주세요.'; } return; }
+  if (btn) { btn.disabled = true; btn.textContent = '확인 중...'; }
+  try {
+    const snap = await getRoomRef(code).get();
+    if (!snap.exists()) {
+      if (status) { status.style.color = '#c0392b'; status.textContent = '❌ 방을 찾을 수 없습니다. 코드를 다시 확인해 주세요.'; }
+    } else {
+      _verifiedRoomCode = code;
+      const data = snap.val();
+      const parts = code.split('-');
+      const grpNum = parts.length >= 2 ? parseInt(parts[1].replace('조','')) : 0;
+      if (grpNum) selectGroup(grpNum);
+      const curPhase = data.currentPhase ?? 0;
+      const phaseText = curPhase === 0 ? '대기실' : `${curPhase}단계 진행 중`;
+      if (status) { status.style.color = '#27ae60'; status.textContent = `✅ 방 확인 완료 — ${grpNum}조 · ${phaseText}`; }
+      // URL에 room 파라미터 반영
+      const url = new URL(location.href);
+      url.searchParams.set('room', code);
+      history.replaceState({}, '', url.toString());
+      const clearBtn = document.getElementById('btn-clear-room');
+      if (clearBtn) clearBtn.style.display = 'block';
+    }
+  } catch(e) {
+    if (status) { status.style.color = '#c0392b'; status.textContent = '❌ 연결 오류가 발생했습니다. 다시 시도해 주세요.'; }
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '확인'; }
+  updateJoinBtn();
+}
+document.getElementById('btn-join').addEventListener('click', async () => {
+  const name = document.getElementById('input-name').value.trim();
+  if (!name) return;
+  if (!qrLobbyMode && !selectedRole) return;
+  myName = name; myRole = qrLobbyMode ? '미배정' : selectedRole;
+  participantsPanelOpen = (myRole === '모더레이터');
+
+  const btnJoin = document.getElementById('btn-join');
+  btnJoin.disabled = true; btnJoin.textContent = '연결 중...';
+
+  try {
+    const urlRoom = new URLSearchParams(location.search).get('room')
+      || document.getElementById('room-code-input')?.value.trim().toUpperCase();
+
+    if (myRole === '모더레이터') {
+      if (urlRoom) {
+        // 모더레이터 재접속: 기존 방에 연결
+        const ok = await joinRoom(urlRoom);
+        if (!ok) {
+          // 방이 없으면 새로 생성
+          await createRoom(currentScenarioId, myGroup);
+        } else {
+          // 재접속 성공: roomCode 복원, URL 반영
+          roomCode = urlRoom;
+          const url = new URL(location.href);
+          url.searchParams.set('room', roomCode);
+          history.replaceState({}, '', url.toString());
+        }
+      } else {
+        // 모더레이터: 새 방 생성
+        await createRoom(currentScenarioId, myGroup);
+      }
+    } else {
+      // 참가자: URL 또는 직접 입력한 방 코드로 참가
+      if (!urlRoom) {
+        alert('방 코드를 입력하고 [확인] 버튼을 눌러 방을 확인한 후 참가해 주세요.');
+        btnJoin.disabled = false; btnJoin.textContent = '훈련 참가';
+        return;
+      }
+      const ok = await joinRoom(urlRoom);
+      if (!ok) {
+        alert('방을 찾을 수 없습니다. 방 코드를 다시 확인해 주세요.');
+        btnJoin.disabled = false; btnJoin.textContent = '훈련 참가';
+        return;
+      }
+      // 중간 입장 처리: 현재 진행 단계 역할만 선택 가능하도록 필터링
+      const joinedState = getState();
+      const curPhase = joinedState.currentPhase || 0;
+
+      if (curPhase > 0) {
+        // 피드백 전환 중이면 다음 단계 역할 기준, 아니면 현재 단계 기준
+        const targetPhaseIdx = (joinedState.showingFeedback && curPhase < ACTIVE_PHASES.length)
+          ? curPhase
+          : curPhase - 1;
+        const targetPhase = ACTIVE_PHASES[targetPhaseIdx];
+
+        if (targetPhase) {
+          const activeRoles = getActiveRoles(targetPhase);
+          const phase1Roles = getActiveRoles(ACTIVE_PHASES[0]);
+
+          // 역할 버튼 상태 업데이트
+          document.querySelectorAll('.role-btn:not(.moderator-btn)').forEach(btn => {
+            const r = normalizeRole(btn.dataset.role);
+            if (!r) return;
+
+            // 기존 뱃지 제거
+            btn.querySelectorAll('.new-badge').forEach(el => el.remove());
+            btn.classList.remove('disabled', 'taken');
+
+            if (!activeRoles.includes(r)) {
+              // 현재 단계에 없는 역할: 비활성화
+              btn.classList.add('disabled');
+            } else if (!phase1Roles.includes(r)) {
+              // 이번 단계에서 새로 추가된 역할: 신규 뱃지
+              const badge = document.createElement('span');
+              badge.className = 'new-badge';
+              badge.textContent = '신규';
+              btn.appendChild(badge);
+            }
+          });
+
+          // 단계 안내 배너 업데이트
+          const hint = document.getElementById('session-hint-text');
+          if (hint) {
+            const phaseLabel = joinedState.showingFeedback && curPhase < ACTIVE_PHASES.length
+              ? `${curPhase + 1}단계`
+              : `${curPhase}단계`;
+            hint.className = 'session-hint mid-join-notice';
+            hint.innerHTML =
+              `⚠️ 현재 <strong>${targetPhase.emoji} ${targetPhase.title} (${phaseLabel})</strong> 진행 중입니다.<br>` +
+              `이 단계에서 선택 가능한 역할만 활성화되어 있습니다.<br>` +
+              `<small style="opacity:0.8">💡 <strong>신규</strong> 표시는 이번 단계에서 새로 참여하는 역할입니다.</small>`;
+            hint.style.borderLeftColor = targetPhase.color;
+          }
+        }
+      }
+    }
+
+    const state = getState();
+    if (!state.participants) state.participants = {};
+    state.participants[myName] = { role: myRole, name: myName, joinedAt: Date.now() };
+    saveState(state);
+
+    document.getElementById('screen-login').style.display = 'none';
+    document.getElementById('screen-exercise').style.display = 'flex';
+    document.getElementById('ex-header-title').textContent = `${ACTIVE_SCENARIO.emoji} ${ACTIVE_SCENARIO.name} 위기대응 협력 훈련`;
+    document.getElementById('my-role-header').textContent = `역할: ${ROLE_ICONS[myRole] || ''} ${myRole} (${myName})`;
+    const gbEl = document.getElementById('my-group-header');
+    gbEl.textContent = `${myGroup}조`;
+    gbEl.style.display = 'inline-block';
+
+    // 참여자에게만 글씨 크기 위젯 표시
+    if (myRole !== '모더레이터') {
+      document.getElementById('font-size-widget').style.display = 'flex';
+      applyFontSize();
+    }
+
+    // 모더레이터면 QR 모달 바로 표시
+    if (myRole === '모더레이터') {
+      renderExercise();
+      showQRModal(roomCode);
+    } else {
+      renderExercise();
+    }
+    startPolling();
+  } catch(e) {
+    alert('연결 오류: ' + e.message);
+    btnJoin.disabled = false; btnJoin.textContent = '훈련 참가';
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  POLLING (Firebase listener로 대체 — 빈 함수 유지)
+// ═══════════════════════════════════════════════════════
+let lastStateStr = '';
+function startPolling() {
+  // Firebase on('value') 리스너가 실시간으로 처리
+}
+
+// ═══════════════════════════════════════════════════════
+//  TIMER
+// ═══════════════════════════════════════════════════════
+function getTimeRemaining() {
+  const state = getState();
+  if (!state.timerRunning) return null;
+  if (state.timerPaused) return state.timerPausedRemaining != null ? state.timerPausedRemaining : 0;
+  if (!state.phaseStartTime) return null;
+  const phase = ACTIVE_PHASES[state.currentPhase - 1];
+  if (!phase) return null;
+  const elapsed = Math.floor((Date.now() - state.phaseStartTime) / 1000);
+  const duration = state.phaseDuration != null ? state.phaseDuration : phase.duration;
+  return Math.max(0, duration - elapsed);
+}
+function formatTime(seconds) {
+  if (seconds === null || seconds === undefined) return '05:00';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function updateTimerDisplay() {
+  const state = getState();
+  const el = document.getElementById('timer-display');
+  if (!el) return;
+  const remaining = getTimeRemaining();
+  if (remaining === null) {
+    const phase = ACTIVE_PHASES[state.currentPhase - 1];
+    const dur = state.phaseDuration != null ? state.phaseDuration : (phase ? phase.duration : 300);
+    el.textContent = formatTime(dur);
+    el.classList.remove('urgent'); return;
+  }
+  el.textContent = formatTime(remaining);
+  el.classList.toggle('urgent', remaining <= 60 && remaining > 0);
+  if (remaining === 0 && myRole === '모더레이터' && state.timerRunning && !state.timerPaused) {
+    const s = getState(); s.timerRunning = false; s.showingFeedback = true;
+    autoSubmitAllScores(s);
+    saveState(s); broadcast('PHASE_CHANGE', {});
+  }
+}
+function startTimerLoop() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(updateTimerDisplay, 500);
+}
+startTimerLoop();
+
+// ═══════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════
+function renderExercise() {
+  // ACTIVE_SCENARIO/ACTIVE_PHASES가 아직 로드 안 됐으면 대기
+  if (!ACTIVE_SCENARIO || !ACTIVE_PHASES || ACTIVE_PHASES.length === 0) return;
+  const state = getState();
+  // 역할 재배정 공지가 적용된 경우 myRole 자동 동기화
+  if (myName && state.participants && state.participants[myName]) {
+    const assignedRole = state.participants[myName].role;
+    if (assignedRole && assignedRole !== myRole) {
+      myRole = assignedRole;
+      const hdr = document.getElementById('my-role-header');
+      if (hdr) hdr.textContent = `역할: ${ROLE_ICONS[myRole]||''} ${myRole} (${myName})`;
+    }
+  }
+  updatePhaseBar(state);
+  updatePhaseBadge(state);
+  renderBody(state);
+  applySituationFontSize(); // 저장된 글씨 크기 적용
+}
+function updatePhaseBar(state) {
+  for (let i = 0; i <= 4; i++) {
+    const el = document.getElementById(`step-${i}`);
+    if (!el) continue;
+    el.classList.remove('active','done','feedback');
+    if (i === state.currentPhase) {
+      el.classList.add('active');
+      if (state.showingFeedback) el.classList.add('feedback');
+    } else if (i < state.currentPhase) el.classList.add('done');
+  }
+}
+function updatePhaseBadge(state) {
+  const badge = document.getElementById('phase-badge');
+  if (!badge) return;
+  if (state.currentPhase === 0) badge.textContent = '대기 중';
+  else if (state.currentPhase <= 3) badge.textContent = state.showingFeedback ? `${state.currentPhase}단계 피드백` : `${state.currentPhase}단계`;
+  else badge.textContent = '최종 피드백';
+}
+function renderBody(state) {
+  const body = document.getElementById('ex-body');
+  if (!body) return;
+  if (state.currentPhase === 0) renderLobby(body, state);
+  else if (state.currentPhase >= 1 && state.currentPhase <= 3) {
+    if (state.showingFeedback) renderPhaseFeedback(body, state);
+    else renderPhase(body, state);
+  } else if (state.currentPhase === 4) renderFeedbackTransition();
+}
+
+function renderLobby(body, state) {
+  const participants = state.participants || {};
+  const pList = Object.values(participants)
+    .sort((a, b) => (a.role === '모더레이터' ? -1 : b.role === '모더레이터' ? 1 : 0))
+    .map(info =>
+      `<div class="participant-item">
+        <div class="p-dot online"></div>
+        <div>${ROLE_ICONS[info.role]||''} <strong>${info.role}</strong> <span class="p-role">· ${info.name}</span></div>
+      </div>`
+    ).join('');
+
+  if (myRole === '모더레이터') {
+    const lobbyRolePanel = renderRoleReassignPanel(state, true);
+    body.innerHTML = `<div style="flex:1"><div class="lobby-card" style="margin:0 auto;max-width:520px">
+      <div style="font-size:48px;margin-bottom:12px">🎙️</div>
+      <h2>진행자 대기실</h2>
+      <p>참가자가 접속하면 아래에서 역할을 배정한 후 훈련을 시작하세요.</p>
+      <div style="margin:20px 0"><div class="my-role-display">모더레이터 · ${myName}</div></div>
+      <div class="waiting-participants">
+        <h4>현재 접속 참가자 (${Object.values(participants).length}명)</h4>
+        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          ${pList || '<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">아직 참가자가 없습니다</div>'}
+        </div>
+      </div>
+      <div style="margin-top:16px">${lobbyRolePanel}</div>
+      <button onclick="showQRModal(roomCode)" style="margin-top:4px;width:100%;padding:12px;background:white;border:2px solid #1a3a5c;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;color:#1a3a5c;transition:all 0.2s" onmouseover="this.style.background='#f0f6ff'" onmouseout="this.style.background='white'">
+        📱 QR 코드 표시하기
+      </button>
+      <div style="margin-top:14px;background:#f8f9fa;border:1px solid var(--border);border-radius:10px;padding:14px">
+        <div style="font-size:13px;font-weight:700;color:#1a3a5c;margin-bottom:10px">⏱ 1단계 시간 설정</div>
+        <div style="display:flex;align-items:center;gap:8px;justify-content:center">
+          <button onclick="lobbyChangeDuration(-1)" style="width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:white;font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#555;font-family:inherit">−</button>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input id="lobby-duration-input" type="number" value="5" min="1" max="60" style="width:52px;text-align:center;font-size:20px;font-weight:700;border:1.5px solid var(--border);border-radius:8px;padding:4px 6px;font-family:inherit;color:#1a3a5c">
+            <span style="font-size:14px;color:var(--muted);font-weight:600">분</span>
+          </div>
+          <button onclick="lobbyChangeDuration(1)" style="width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:white;font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#555;font-family:inherit">+</button>
+        </div>
+      </div>
+      <button class="btn-next-phase" style="margin-top:10px;width:100%;padding:14px" onclick="startPhaseWithTimer(1)">
+        ▶ 1단계 시작 — ${ACTIVE_PHASES[0] ? ACTIVE_PHASES[0].title : ''}
+      </button>
+      <button onclick="leaveToLogin()" style="margin-top:10px;width:100%;padding:11px;background:none;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--muted);cursor:pointer;font-family:inherit;transition:all 0.2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">← 조 선택 화면으로 돌아가기</button>
+    </div></div>`;
+  } else {
+    const isUnassigned = myRole === '미배정';
+    body.innerHTML = `<div style="flex:1"><div class="lobby-card" style="margin:0 auto">
+      <div style="font-size:48px;margin-bottom:12px">${isUnassigned ? '⏳' : (ROLE_ICONS[myRole]||'👤')}</div>
+      <h2>참가자 대기실</h2>
+      <p>${isUnassigned ? '모더레이터가 역할을 배정할 때까지 잠시 기다려 주세요.' : '모더레이터(진행자)가 훈련을 시작할 때까지 대기해 주세요.'}</p>
+      <div style="margin:20px 0"><div class="my-role-display">${isUnassigned ? '역할 배정 대기 중' : myRole} · ${myName}</div></div>
+      <div class="waiting-participants">
+        <h4>현재 접속 참가자 (${Object.keys(participants).length}명)</h4>
+        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          ${pList || '<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">아직 참가자가 없습니다</div>'}
+        </div>
+      </div>
+      <p style="margin-top:20px;color:var(--muted);font-size:13px" class="dot-blink">모더레이터 시작 대기 중</p>
+      <button onclick="leaveToLogin()" style="margin-top:16px;width:100%;padding:11px;background:none;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--muted);cursor:pointer;font-family:inherit;transition:all 0.2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">← 조 선택 화면으로 돌아가기</button>
+    </div></div>`;
+  }
+}
+
+let participantsPanelOpen = false;
+let proxyPanelOpen = false;
+function toggleFbSection(bodyId, iconId) {
+  const body = document.getElementById(bodyId);
+  const icon = document.getElementById(iconId);
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if (icon) icon.textContent = isOpen ? '▼' : '▲';
+}
+function toggleProxySection() {
+  proxyPanelOpen = !proxyPanelOpen;
+  const body = document.getElementById('proxy-section-body');
+  const icon = document.getElementById('proxy-section-icon');
+  if (body) body.style.display = proxyPanelOpen ? '' : 'none';
+  if (icon) icon.textContent = proxyPanelOpen ? '▲' : '▼';
+}
+function toggleParticipantsPanel() {
+  participantsPanelOpen = !participantsPanelOpen;
+  const content = document.getElementById('participants-body-content');
+  const icon = document.getElementById('participants-toggle-icon');
+  if (content) content.style.display = participantsPanelOpen ? '' : 'none';
+  if (icon) icon.textContent = participantsPanelOpen ? '▲' : '▼';
+}
+
+function renderRoleReassignPanel(state, inProgress = false) {
+  const participants = state.participants || {};
+  const nonMod = Object.values(participants).filter(p => p.role && p.role !== '모더레이터' && p.name);
+  const title = inProgress ? '🔄 진행 중 역할 조정' : '🔄 역할 재배정';
+  if (!nonMod.length) {
+    return `
+      <div style="background:white;border-radius:var(--radius);box-shadow:var(--shadow);padding:${inProgress?'12px 14px':'16px 20px'};margin-bottom:${inProgress?'10':'16'}px;border-left:4px solid #f39c12">
+        <h4 style="font-size:${inProgress?'12':'14'}px;font-weight:700;color:#e67e22;margin-bottom:6px">${title}</h4>
+        <p style="font-size:12px;color:var(--muted)">현재 접속한 참가자가 없습니다. 참가자가 접속하면 역할 ${inProgress?'조정':'재배정'} 기능이 활성화됩니다.</p>
+      </div>`;
+  }
+
+  // 진행 중이면 현재 단계 역할, 피드백 후이면 다음 단계 역할 표시
+  let allowedRoles, phaseLabel;
+  if (inProgress) {
+    const curPhase = ACTIVE_PHASES[state.currentPhase - 1];
+    allowedRoles = curPhase ? getActiveRoles(curPhase) : DISPLAY_ROLES;
+    phaseLabel = curPhase ? `${state.currentPhase}단계: ${curPhase.title}` : null;
+  } else {
+    const nextPhaseIdx = state.currentPhase;
+    const nextPhase = ACTIVE_PHASES[nextPhaseIdx];
+    allowedRoles = nextPhase ? getActiveRoles(nextPhase) : DISPLAY_ROLES;
+    phaseLabel = nextPhase ? `${nextPhaseIdx + 1}단계: ${nextPhase.title}` : null;
+  }
+
+  const pad = inProgress ? '6px 10px' : '8px 12px';
+  const fs  = inProgress ? '12px' : '13px';
+  const rows = nonMod.map(info => {
+    // 피드백 후 공지 모드: 이미 공지된 역할이 있으면 select 기본값으로 반영
+    const announced = (!inProgress && state.roleAnnouncement && state.roleAnnouncement.assignments)
+      ? state.roleAnnouncement.assignments[info.name] : null;
+    const defaultRole = announced && allowedRoles.includes(announced)
+      ? announced
+      : (allowedRoles.includes(info.role) ? info.role : allowedRoles[0]);
+    return `
+    <tr>
+      <td style="padding:${pad};font-size:${fs}">${escapeHtml(info.name)}</td>
+      <td style="padding:${pad};font-size:${fs}">${ROLE_ICONS[info.role]||''} ${info.role}</td>
+      <td style="padding:${pad}">
+        <select class="role-reassign-select" data-name="${escapeHtml(info.name)}" style="padding:4px 6px;border:2px solid var(--border);border-radius:6px;font-size:${fs};font-family:inherit">
+          ${allowedRoles.map(r=>`<option value="${r}" ${r===defaultRole?'selected':''}>${ROLE_ICONS[r]||''} ${r}</option>`).join('')}
+        </select>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const outerPad  = inProgress ? '12px 14px' : '18px 20px';
+  const outerMb   = inProgress ? '10px' : '16px';
+  const thPad     = inProgress ? '6px 10px' : '8px 12px';
+  const thFs      = inProgress ? '11px' : '12px';
+  const btnPad    = inProgress ? '7px 14px' : '9px 20px';
+  const btnFs     = inProgress ? '12px' : '13px';
+  const phaseTag  = phaseLabel
+    ? `<div style="font-size:11px;font-weight:700;color:#7d3c98;background:#f5eafa;border-radius:6px;padding:5px 8px;margin-bottom:10px">📋 ${inProgress?'현재':'다음'} 단계 참여 역할: ${allowedRoles.map(r=>`${ROLE_ICONS[r]||''}${r}`).join(', ')}<br><span style="font-weight:400;color:var(--muted)">(${phaseLabel})</span></div>`
+    : '';
+  const descText  = inProgress
+    ? '참가자 역할을 지금 즉시 변경합니다. 변경 즉시 해당 참가자 화면에 반영됩니다.'
+    : '다음 단계를 위해 역할을 재배정하고 참가자들에게 공지하세요.';
+  const actionBtn = inProgress
+    ? `<button onclick="applyRoleChangeNow()" style="padding:${btnPad};background:#e67e22;color:white;border:none;border-radius:8px;font-size:${btnFs};font-weight:700;cursor:pointer;font-family:inherit">⚡ 지금 바로 적용</button>`
+    : `<button onclick="announceRoleChange()" style="padding:${btnPad};background:#e67e22;color:white;border:none;border-radius:8px;font-size:${btnFs};font-weight:700;cursor:pointer;font-family:inherit">📢 역할 재배정 공지하기</button>
+       ${state.roleAnnouncement?`<button onclick="clearRoleAnnouncement()" style="padding:${btnPad};background:white;color:var(--muted);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit">공지 취소</button>`:''}`;
+
+  return `
+    <div style="background:white;border-radius:var(--radius);box-shadow:var(--shadow);padding:${outerPad};margin-bottom:${outerMb};border-left:4px solid #f39c12">
+      <h4 style="font-size:${inProgress?'13':'14'}px;font-weight:700;color:#e67e22;margin-bottom:${inProgress?'6':'10'}px">${title}</h4>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:${phaseLabel?'6px':'10px'}">${descText}</p>
+      ${phaseTag}
+      <table style="width:100%;border-collapse:collapse;background:#f7f9fc;border-radius:8px;overflow:hidden">
+        <thead><tr style="background:var(--border)">
+          <th style="padding:${thPad};font-size:${thFs};text-align:left;font-weight:600">이름</th>
+          <th style="padding:${thPad};font-size:${thFs};text-align:left;font-weight:600">현재 역할</th>
+          <th style="padding:${thPad};font-size:${thFs};text-align:left;font-weight:600">${inProgress?'변경 역할':'다음 역할'}</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="margin-top:${inProgress?'8':'12'}px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        ${actionBtn}
+      </div>
+    </div>`;
+}
+
+function renderRoleAnnouncementBanner(state) {
+  if (!state.roleAnnouncement) return '';
+  const isNow = state.roleAnnouncement.isNow === true;
+  // 유효한 항목만 표시 (null/undefined role 제외, 실제 participants에 있는 이름만)
+  const validEntries = Object.entries(state.roleAnnouncement.assignments)
+    .filter(([name, role]) => name && role && role !== 'null' && state.participants && state.participants[name]);
+  if (!validEntries.length) return '';
+  const rows = validEntries.map(([name, role]) => `
+    <tr>
+      <td style="padding:6px 10px;font-size:13px">${escapeHtml(name)}</td>
+      <td style="padding:6px 10px;font-size:13px;font-weight:700">${ROLE_ICONS[role]||''} ${role}</td>
+    </tr>`).join('');
+  const title   = isNow ? '⚡ 역할 변경 안내' : '📢 역할 재배정 공지';
+  const desc    = isNow
+    ? '모더레이터가 현재 단계에서 역할을 재배정했습니다. 본인의 역할을 확인하세요.'
+    : '모더레이터가 다음 단계 역할을 재배정했습니다. 아래 안내에 따라 역할을 변경해 주세요.';
+  const colHead = isNow ? '변경된 역할' : '다음 역할';
+  return `
+    <div style="background:#fff8e1;border:2px solid #f39c12;border-radius:var(--radius);padding:16px 20px;margin-bottom:16px">
+      <h4 style="font-size:14px;font-weight:700;color:#e67e22;margin-bottom:8px">${title}</h4>
+      <p style="font-size:12px;color:#7f6000;margin-bottom:10px">${desc}</p>
+      <table style="border-collapse:collapse;background:rgba(243,156,18,0.08);border-radius:6px;overflow:hidden">
+        <thead><tr style="background:rgba(243,156,18,0.2)">
+          <th style="padding:6px 10px;font-size:12px;text-align:left;font-weight:600">이름</th>
+          <th style="padding:6px 10px;font-size:12px;text-align:left;font-weight:600">${colHead}</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function announceRoleChange() {
+  const assignments = {};
+  const state = getState();
+  document.querySelectorAll('.role-reassign-select').forEach(sel => {
+    const name = sel.dataset.name;
+    const newRole = sel.value;
+    if (!name || !newRole || newRole === 'null' || !state.participants || !state.participants[name]) return;
+    assignments[name] = newRole;
+  });
+  state.roleAnnouncement = { assignments, timestamp: Date.now(), isNow: false };
+  saveState(state);
+  broadcast('STATE_CHANGED', {});
+  renderExercise();
+}
+
+function clearRoleAnnouncement() {
+  const state = getState();
+  state.roleAnnouncement = null;
+  saveState(state);
+  broadcast('STATE_CHANGED', {});
+  renderExercise();
+}
+
+// 진행 중 역할 즉시 적용 (state.participants 바로 업데이트)
+function applyRoleChangeNow() {
+  if (myRole !== '모더레이터') return;
+  const state = getState();
+  const assignments = {};
+  let changed = false;
+  document.querySelectorAll('.role-reassign-select').forEach(sel => {
+    const name = sel.dataset.name;
+    const newRole = sel.value;
+    // state.participants에 실제로 존재하고 유효한 역할인 경우만 처리
+    if (!name || !newRole || newRole === 'null' || !state.participants || !state.participants[name]) return;
+    assignments[name] = newRole;
+    if (state.participants[name].role !== newRole) {
+      state.participants[name].role = newRole;
+      changed = true;
+    }
+  });
+  if (!changed) { alert('변경된 역할이 없습니다.'); return; }
+  // isNow: true → 배너에서 "현재 단계" 문구 사용
+  state.roleAnnouncement = { assignments, timestamp: Date.now(), isNow: true };
+  saveState(state);
+  broadcast('STATE_CHANGED', {});
+  renderExercise();
+}
+
+function renderPhase(body, state) {
+  const phase = ACTIVE_PHASES[state.currentPhase - 1];
+  const responses = state.responses || {};
+  const phaseResponses = responses[`phase${state.currentPhase}`] || {};
+  const myResponse = phaseResponses[getRKey()] || '';
+  const submitted = phaseResponses[`${getRKey()}_submitted`] || false;
+  const myMission = phase.missions[getBaseRole(myRole)];
+
+  const scenarioCardHtml = `
+    <div class="scenario-card">
+      <div class="scenario-header ${phase.colorClass}">
+        ${phase.emoji} ${state.currentPhase}단계 상황
+      </div>
+      <div class="scenario-body" id="scenario-body-text">
+        <div class="date-tag">📅 ${phase.date}</div>
+        <p>${phase.situation}</p>
+      </div>
+    </div>`;
+
+  const participantsCardHtml = `
+    <div class="participants-card">
+      <h3 style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between" onclick="toggleParticipantsPanel()">
+        <span>👥 참가자 현황</span>
+        <span id="participants-toggle-icon" style="font-size:11px;opacity:0.8">${participantsPanelOpen?'▲':'▼'}</span>
+      </h3>
+      <div id="participants-body-content" style="display:${participantsPanelOpen?'':'none'}">
+        ${renderParticipantsList(state, state.currentPhase)}
+      </div>
+    </div>`;
+
+  // 참가자용: 시나리오 + 참가자현황 (좌측 패널)
+  const scenarioHtml = `
+    <div class="scenario-panel">
+      ${scenarioCardHtml}
+      ${participantsCardHtml}
+    </div>`;
+
+  let workHtml = '';
+  if (myRole === '모더레이터') {
+    const isRunning = state.timerRunning && !state.timerPaused;
+    const isPaused = state.timerRunning && state.timerPaused;
+    const notStarted = !state.timerRunning;
+    const phaseDur = state.phaseDuration != null ? state.phaseDuration : phase.duration;
+    const durMins = Math.round(phaseDur / 60);
+    const remaining = state.timerRunning ? getTimeRemaining() : null;
+
+    let timerControlHtml = '';
+    if (notStarted) {
+      // 단계 시작 전: 시간 설정 + 시작 버튼
+      timerControlHtml = `
+        <div style="background:#f7f9fc;border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px">
+          <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:10px">⏱ ${state.currentPhase}단계 시간 설정</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <button onclick="changeDuration(-1)" style="width:34px;height:34px;border:2px solid var(--border);border-radius:8px;background:white;font-size:18px;font-weight:700;cursor:pointer;color:var(--primary);display:flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">−</button>
+            <div style="display:flex;align-items:center;gap:6px;background:white;border:2px solid var(--primary);border-radius:8px;padding:6px 14px">
+              <input type="number" id="duration-input" value="${durMins}" min="1" max="60" style="width:38px;border:none;outline:none;font-size:18px;font-weight:800;font-family:inherit;text-align:center;color:var(--primary);background:transparent">
+              <span style="font-size:14px;font-weight:600;color:var(--muted)">분</span>
+            </div>
+            <button onclick="changeDuration(1)" style="width:34px;height:34px;border:2px solid var(--border);border-radius:8px;background:white;font-size:18px;font-weight:700;cursor:pointer;color:var(--primary);display:flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">+</button>
+          </div>
+          <button class="btn-start-timer" onclick="startTimer()" style="width:100%;padding:12px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px">
+            ▶ ${state.currentPhase}단계 시작
+          </button>
+        </div>`;
+    } else if (isRunning) {
+      // 진행 중: 남은 시간 + 일시정지 + 초기화
+      timerControlHtml = `
+        <div style="background:#f0fff4;border:1.5px solid #27ae60;border-radius:10px;padding:14px 16px;margin-bottom:14px">
+          <div style="font-size:13px;font-weight:700;color:#27ae60;margin-bottom:10px">⏱ ${remaining !== null ? formatTime(remaining) + ' 남음' : '진행 중'}</div>
+          <div style="display:flex;gap:8px">
+            <button onclick="pauseTimer()" style="flex:1;padding:11px;background:white;border:2px solid #e67e22;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;color:#e67e22;font-family:inherit;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px" onmouseover="this.style.background='#fef9f0'" onmouseout="this.style.background='white'">⏸ 일시정지</button>
+            <button onclick="resetPhaseTimer()" style="padding:11px 14px;background:white;border:2px solid var(--border);border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;color:var(--muted);font-family:inherit;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:4px" onmouseover="this.style.borderColor='#c0392b';this.style.color='#c0392b'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">🔄 초기화</button>
+          </div>
+        </div>`;
+    } else if (isPaused) {
+      // 일시정지 상태: 시간 수정 + 재개 + 초기화
+      const pausedMins = remaining !== null ? Math.max(1, Math.round(remaining / 60)) : 1;
+      timerControlHtml = `
+        <div style="background:#fff8f0;border:1.5px solid #e67e22;border-radius:10px;padding:14px 16px;margin-bottom:14px">
+          <div style="font-size:13px;font-weight:700;color:#e67e22;margin-bottom:10px">⏸ 일시정지됨</div>
+          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px">남은 시간 수정</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <button onclick="changePausedDuration(-1)" style="width:34px;height:34px;border:2px solid var(--border);border-radius:8px;background:white;font-size:18px;font-weight:700;cursor:pointer;color:var(--primary);display:flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">−</button>
+            <div style="display:flex;align-items:center;gap:6px;background:white;border:2px solid #e67e22;border-radius:8px;padding:6px 14px">
+              <input type="number" id="paused-duration-input" value="${pausedMins}" min="1" max="60" style="width:38px;border:none;outline:none;font-size:18px;font-weight:800;font-family:inherit;text-align:center;color:#e67e22;background:transparent">
+              <span style="font-size:14px;font-weight:600;color:var(--muted)">분</span>
+            </div>
+            <button onclick="changePausedDuration(1)" style="width:34px;height:34px;border:2px solid var(--border);border-radius:8px;background:white;font-size:18px;font-weight:700;cursor:pointer;color:var(--primary);display:flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">+</button>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="resumeTimer()" style="flex:1;padding:11px;background:#e67e22;border:2px solid #e67e22;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;color:white;font-family:inherit;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px" onmouseover="this.style.background='#cf6d17'" onmouseout="this.style.background='#e67e22'">▶ 재개</button>
+            <button onclick="resetPhaseTimer()" style="padding:11px 14px;background:white;border:2px solid var(--border);border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;color:var(--muted);font-family:inherit;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:4px" onmouseover="this.style.borderColor='#c0392b';this.style.color='#c0392b'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">🔄 초기화</button>
+          </div>
+        </div>`;
+    }
+
+    // 컴팩트 타이머 UI (좌측 패널용)
+    let timerCompactHtml = '';
+    if (notStarted) {
+      timerCompactHtml = `
+        <div style="background:#f7f9fc;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">⏱ ${state.currentPhase}단계 시간 설정</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+            <button onclick="changeDuration(-1)" style="width:28px;height:28px;border:1.5px solid var(--border);border-radius:6px;background:white;font-size:15px;font-weight:700;cursor:pointer;color:var(--primary);display:flex;align-items:center;justify-content:center" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">−</button>
+            <div style="display:flex;align-items:center;gap:4px;background:white;border:1.5px solid var(--primary);border-radius:6px;padding:4px 10px">
+              <input type="number" id="duration-input" value="${durMins}" min="1" max="60" style="width:32px;border:none;outline:none;font-size:15px;font-weight:800;font-family:inherit;text-align:center;color:var(--primary);background:transparent">
+              <span style="font-size:12px;font-weight:600;color:var(--muted)">분</span>
+            </div>
+            <button onclick="changeDuration(1)" style="width:28px;height:28px;border:1.5px solid var(--border);border-radius:6px;background:white;font-size:15px;font-weight:700;cursor:pointer;color:var(--primary);display:flex;align-items:center;justify-content:center" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">+</button>
+          </div>
+          <button class="btn-start-timer" onclick="startTimer()" style="width:100%;padding:9px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px">
+            ▶ ${state.currentPhase}단계 시작
+          </button>
+        </div>`;
+    } else if (isRunning) {
+      timerCompactHtml = `
+        <div style="background:#f0fff4;border:1.5px solid #27ae60;border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:15px;font-weight:800;color:#27ae60">⏱ ${remaining !== null ? formatTime(remaining) : ''} 남음</span>
+          <div style="display:flex;gap:6px">
+            <button onclick="pauseTimer()" style="padding:6px 10px;background:white;border:1.5px solid #e67e22;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;color:#e67e22;font-family:inherit" onmouseover="this.style.background='#fef9f0'" onmouseout="this.style.background='white'">⏸ 일시정지</button>
+            <button onclick="resetPhaseTimer()" style="padding:6px 8px;background:white;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);font-family:inherit" onmouseover="this.style.borderColor='#c0392b';this.style.color='#c0392b'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">🔄</button>
+          </div>
+        </div>`;
+    } else if (isPaused) {
+      const pausedMins = remaining !== null ? Math.max(1, Math.round(remaining / 60)) : 1;
+      timerCompactHtml = `
+        <div style="background:#fff8f0;border:1.5px solid #e67e22;border-radius:8px;padding:10px 12px;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:700;color:#e67e22;margin-bottom:8px">⏸ 일시정지됨 — 남은 시간 수정</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+            <button onclick="changePausedDuration(-1)" style="width:28px;height:28px;border:1.5px solid var(--border);border-radius:6px;background:white;font-size:15px;font-weight:700;cursor:pointer;color:var(--primary);display:flex;align-items:center;justify-content:center" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">−</button>
+            <div style="display:flex;align-items:center;gap:4px;background:white;border:1.5px solid #e67e22;border-radius:6px;padding:4px 10px">
+              <input type="number" id="paused-duration-input" value="${pausedMins}" data-exact-secs="${remaining !== null ? Math.round(remaining) : pausedMins * 60}" min="1" max="60" style="width:32px;border:none;outline:none;font-size:15px;font-weight:800;font-family:inherit;text-align:center;color:#e67e22;background:transparent">
+              <span style="font-size:12px;font-weight:600;color:var(--muted)">분</span>
+            </div>
+            <button onclick="changePausedDuration(1)" style="width:28px;height:28px;border:1.5px solid var(--border);border-radius:6px;background:white;font-size:15px;font-weight:700;cursor:pointer;color:var(--primary);display:flex;align-items:center;justify-content:center" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">+</button>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button onclick="resumeTimer()" style="flex:1;padding:8px;background:#e67e22;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;color:white;font-family:inherit" onmouseover="this.style.background='#cf6d17'" onmouseout="this.style.background='#e67e22'">▶ 재개</button>
+            <button onclick="resetPhaseTimer()" style="padding:8px 10px;background:white;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);font-family:inherit" onmouseover="this.style.borderColor='#c0392b';this.style.color='#c0392b'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">🔄</button>
+          </div>
+        </div>`;
+    }
+
+    // 좌측: 컴팩트 진행자 컨트롤 + 참가자현황
+    const modControlPanelHtml = `
+        <div class="moderator-panel-card">
+          <h3 style="font-size:13px;margin-bottom:10px">🎙️ 진행자 컨트롤 패널</h3>
+          ${timerCompactHtml}
+          <div class="ctrl-row" style="margin-bottom:10px">
+            ${state.currentPhase > 0 ? `<button class="btn-prev-phase" onclick="prevPhase()" style="font-size:12px;padding:8px 12px">◀ 이전</button>` : ''}
+            ${state.timerRunning
+              ? `<button class="btn-next-phase" onclick="nextPhase()" style="background:#8e44ad;font-size:12px;padding:8px 12px">⏭ 지금 피드백</button>`
+              : `<button class="btn-next-phase" onclick="nextPhase()" style="font-size:12px;padding:8px 12px">💡 피드백 보기</button>`}
+          </div>
+          <div style="padding-top:8px;border-top:1px solid #f5e0c0;display:flex;flex-direction:column;gap:6px">
+            <button onclick="showQRModal(roomCode)" style="width:100%;padding:7px;background:white;color:#1a3a5c;border:1.5px solid #1a3a5c;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.2s" onmouseover="this.style.background='#f0f6ff'" onmouseout="this.style.background='white'">📱 QR 재공유</button>
+            <button onclick="resetAll()" style="width:100%;padding:7px;background:white;color:#c0392b;border:1.5px solid #c0392b;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.2s" onmouseover="this.style.background='#c0392b';this.style.color='white'" onmouseout="this.style.background='white';this.style.color='#c0392b'">🔄 훈련 초기화</button>
+          </div>
+        </div>`;
+
+    // 좌측: 시나리오 카드, 우측: 컨트롤 패널 + 역할조정 + 참가자현황
+    workHtml = `<div class="work-area">${scenarioCardHtml}</div>`;
+    const modRightHtml = `
+      <div class="scenario-panel mod-right-panel">
+        ${modControlPanelHtml}
+        ${renderRoleReassignPanel(state, true)}
+        ${participantsCardHtml}
+      </div>`;
+
+    // 모더레이터 전용: 좌측=시나리오, 우측=컨트롤+참가자
+    body.classList.remove('mod-exercise');
+    body.innerHTML = workHtml + modRightHtml;
+    // 이후 proxy/feedback 삽입은 공통 로직에서 처리
+  } else if (!getActiveRoles(phase).includes(myRole)) {
+    workHtml = `
+      <div class="work-area">
+        <div class="no-mission-notice">
+          <p style="font-size:32px;margin-bottom:12px">⏸</p>
+          <p style="font-size:16px;font-weight:700;color:var(--primary);margin-bottom:8px">이번 단계는 ${myRole}의 참여 단계가 아닙니다</p>
+          <p style="font-size:14px;line-height:1.7">이번 단계는 대기하면서 다른 역할의 진행 상황을 확인하세요.</p>
+        </div>
+        ${renderOtherRolesFilterBar(phase)}
+        <div class="responses-grid">${renderAllRoleCards(phase, phaseResponses, getRKey(), state.participants||{})}</div>
+      </div>`;
+  } else if (!myMission) {
+    workHtml = `
+      <div class="work-area">
+        <div class="no-mission-notice">
+          <p style="font-size:32px;margin-bottom:12px">📌</p>
+          <p style="font-size:16px;font-weight:700;color:var(--primary);margin-bottom:8px">이 단계에서 ${myRole}의 직접 미션은 없습니다</p>
+          <p style="font-size:14px;line-height:1.7">다른 역할의 작성 내용을 확인하면서 상황을 파악하세요.</p>
+        </div>
+        ${renderOtherRolesFilterBar(phase)}
+        <div class="responses-grid">${renderAllRoleCards(phase, phaseResponses, getRKey(), state.participants||{})}</div>
+      </div>`;
+  } else {
+    workHtml = `
+      <div class="work-area">
+        ${!state.timerRunning && !submitted ? `<div class="alert-box">⏳ 모더레이터가 타이머를 시작하면 작성을 시작할 수 있습니다.</div>` : ''}
+        <div class="mission-card">
+          <div class="mission-header">
+            <span class="my-role-badge">${ROLE_ICONS[myRole]||''} ${myRole}</span>
+            <span style="font-size:14px;color:var(--muted)">나의 미션</span>
+          </div>
+          <div class="mission-prompt">${myMission.prompt}</div>
+          <div class="keyword-hint">
+            <strong>참고 키워드:</strong> ${myMission.keywords.map(k=>`<span class="kw-tag">${k}</span>`).join('')}
+          </div>
+          <div class="textarea-wrap">
+            <textarea class="response-textarea" id="my-textarea" placeholder="여기에 조치 사항을 자유롭게 작성하세요..." ${submitted?'disabled':''}>${escapeForTextarea(myResponse)}</textarea>
+          </div>
+          <div class="submit-row">
+            ${submitted
+              ? `<button class="btn-submit submitted" disabled>✅ 제출 완료</button>
+                 <button class="btn-submit" onclick="editResponse()" style="background:white;color:var(--primary);border:2px solid var(--primary);" onmouseover="this.style.background='#f0f6ff'" onmouseout="this.style.background='white'">✏️ 수정하기</button>`
+              : `<button class="btn-submit" onclick="submitResponse()" ${!state.timerRunning?'disabled':''}>제출하기</button>`}
+          </div>
+        </div>
+        <div>
+          <h3 style="font-size:15px;font-weight:700;margin-bottom:12px">📝 다른 역할 작성 현황</h3>
+          ${renderOtherRolesFilterBar(phase)}
+          <div class="responses-grid">${renderAllRoleCards(phase, phaseResponses, getRKey(), state.participants||{})}</div>
+        </div>
+      </div>`;
+  }
+
+  if (myRole !== '모더레이터') {
+    body.classList.remove('mod-exercise');
+    body.innerHTML = scenarioHtml + workHtml;
+  }
+
+  // 역할 재배정 공지 배너 삽입 (모든 역할에게 표시)
+  if (state.roleAnnouncement) {
+    const insertTarget = body.querySelector('.work-area');
+    if (insertTarget) insertTarget.insertAdjacentHTML('afterbegin', renderRoleAnnouncementBanner(state));
+  }
+
+  // 모더레이터만 훈련 중 채점 카드 표시 — 참가자는 피드백 보기(showingFeedback) 시에만 노출
+  if (myRole === '모더레이터') {
+    const insertTarget = body.querySelector('.work-area');
+    if (insertTarget) {
+      const proxyHtml = renderProxySection(phase, phaseResponses, state.participants || {});
+      if (proxyHtml) insertTarget.insertAdjacentHTML('beforeend', proxyHtml);
+      insertTarget.insertAdjacentHTML('beforeend', buildInlineFeedbackHtml(phase, phaseResponses, state.participants||{}));
+    }
+  }
+
+  // Attach textarea live-save
+  const ta = document.getElementById('my-textarea');
+  if (ta) {
+    let draftTimer = null;
+    ta.addEventListener('input', () => { clearTimeout(draftTimer); draftTimer = setTimeout(() => saveMyDraft(ta.value), 600); });
+    ta.addEventListener('blur', () => {
+      clearTimeout(draftTimer); saveMyDraft(ta.value);
+      if (pendingRender) {
+        pendingRender = false;
+        // ✅ 수정: blur가 제출 버튼 클릭에 의해 발생한 경우 click 이벤트가 먼저 처리되도록 50ms 지연
+        setTimeout(() => renderExercise(), 50);
+      }
+    });
+  }
+}
+
+// ── PROXY SECTION ──
+function renderProxySection(phase, phaseResponses, participants) {
+  const activeRoles = getActiveRoles(phase);
+  const missingRoles = activeRoles.filter(r =>
+    r !== '모더레이터' &&
+    phase.missions[r] &&
+    !Object.values(participants).some(p => p.role === r)
+  );
+  if (!missingRoles.length) return '';
+
+  const items = missingRoles.map(role => {
+    const mission = phase.missions[getBaseRole(role)];
+    const text = phaseResponses[role] || '';
+    const isSubmitted = phaseResponses[`${role}_submitted`] && phaseResponses[`${role}_proxy`];
+    const textareaId = `proxy-ta-${role.replace(/\//g,'-')}`;
+    const answerId  = `proxy-ans-${role.replace(/\//g,'-')}`;
+    const copyId    = `proxy-copy-${role.replace(/\//g,'-')}`;
+    const safeAnswer = escapeHtml(mission.answer || '');
+    const attrAnswer = escAttr(mission.answer || '');
+
+    const answerBlock = `
+      <button class="proxy-answer-toggle" onclick="toggleProxyAnswer('${answerId}')">
+        📋 모범 답안 보기 / 숨기기
+      </button>
+      <div class="proxy-answer-box" id="${answerId}" data-answer="${attrAnswer}">
+        <button class="btn-copy-answer" id="${copyId}" onclick="copyProxyAnswer('${answerId}','${copyId}','${textareaId}')">
+          📋 복사 후 붙여넣기
+        </button>
+        ${safeAnswer}
+      </div>`;
+
+    if (isSubmitted) {
+      return `
+        <div class="proxy-role-item">
+          <div class="proxy-role-title">
+            ${ROLE_ICONS[role]||''} ${role}
+            <span class="proxy-submitted-badge">✅ 대리입력 완료</span>
+            <button class="btn-proxy-edit" onclick="editProxy('${role}')">수정</button>
+          </div>
+          <div class="proxy-mission-hint">💬 ${mission.prompt}</div>
+          ${answerBlock}
+          <div style="font-size:13px;color:var(--text);background:#f7f9fc;border-radius:6px;padding:10px 12px;white-space:pre-wrap;line-height:1.6">${escapeHtml(text)}</div>
+        </div>`;
+    }
+    return `
+      <div class="proxy-role-item">
+        <div class="proxy-role-title">${ROLE_ICONS[role]||''} ${role} <span style="font-size:11px;color:var(--muted);font-weight:400">(미참여 — 대리 입력)</span></div>
+        <div class="proxy-mission-hint">💬 ${mission.prompt}</div>
+        ${answerBlock}
+        <textarea class="proxy-textarea" id="${textareaId}" placeholder="해당 역할의 답변을 대신 입력하세요...">${escapeForTextarea(text)}</textarea>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn-proxy-submit" onclick="submitProxyResponse('${role}', '${textareaId}')">📝 대리 제출</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="proxy-section">
+      <div style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px" onclick="toggleProxySection()">
+        <span style="font-weight:700;font-size:14px;color:#9b59b6">🔄 미참여 역할 대리 입력</span>
+        <span id="proxy-section-icon" style="font-size:11px;opacity:0.8;color:#9b59b6">${proxyPanelOpen?'▲':'▼'}</span>
+      </div>
+      <div id="proxy-section-body" style="display:${proxyPanelOpen?'':'none'}">
+        <div class="proxy-section-desc">아래 역할은 현재 참가자가 없습니다. 모더레이터가 대신 답변을 입력할 수 있습니다.</div>
+        ${items}
+      </div>
+    </div>`;
+}
+
+function toggleProxyAnswer(answerId) {
+  const box = document.getElementById(answerId);
+  if (box) box.classList.toggle('open');
+}
+
+function copyProxyAnswer(answerId, copyId, textareaId) {
+  const box = document.getElementById(answerId);
+  if (!box) return;
+  // data-answer에 저장된 원본 텍스트를 사용 (줄바꿈 완벽 보존)
+  const rawText = box.dataset.answer || '';
+
+  // 텍스트 영역에 붙여넣기
+  const ta = document.getElementById(textareaId);
+  if (ta) { ta.value = rawText; ta.focus(); }
+
+  // 클립보드에도 복사
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(rawText).catch(() => {});
+  } else {
+    try {
+      const t = document.createElement('textarea');
+      t.value = rawText; document.body.appendChild(t);
+      t.select(); document.execCommand('copy');
+      document.body.removeChild(t);
+    } catch {}
+  }
+
+  // 버튼 피드백
+  const copyBtn = document.getElementById(copyId);
+  if (copyBtn) {
+    copyBtn.textContent = '✅ 붙여넣기 완료';
+    copyBtn.classList.add('copied');
+    setTimeout(() => {
+      copyBtn.innerHTML = '📋 복사 후 붙여넣기';
+      copyBtn.classList.remove('copied');
+    }, 1800);
+  }
+}
+
+function submitProxyResponse(role, textareaId) {
+  const ta = document.getElementById(textareaId);
+  const text = ta ? ta.value.trim() : '';
+  const state = getState();
+  if (!state.responses) state.responses = {};
+  const key = `phase${state.currentPhase}`;
+  if (!state.responses[key]) state.responses[key] = {};
+  state.responses[key][role] = text;
+  state.responses[key][`${role}_submitted`] = true;
+  state.responses[key][`${role}_proxy`] = true;
+  saveState(state);
+  broadcast('RESPONSE_UPDATE', {});
+  renderExercise();
+}
+
+function editProxy(role) {
+  const state = getState();
+  const key = `phase${state.currentPhase}`;
+  if (state.responses && state.responses[key]) {
+    state.responses[key][`${role}_submitted`] = false;
+    state.responses[key][`${role}_proxy`] = false;
+  }
+  saveState(state);
+  renderExercise();
+}
+
+// ═══════════════════════════════════════════════════════
+//  MANUAL SCORING (모더레이터 직접 채점)
+// ═══════════════════════════════════════════════════════
+
+// 기본 균등 배점 계산 (총 100점)
+function getDefaultWeights(keywords) {
+  const n = keywords.length;
+  if (!n) return [];
+  const base = Math.floor(100 / n);
+  const rem  = 100 - base * n;
+  return keywords.map((_, i) => base + (i < rem ? 1 : 0));
+}
+
+// 저장된 배점 또는 기본 균등 배점 반환
+function getWeightsForRole(state, phaseNum, role, keywords) {
+  const saved = (state.scoreWeights || {})[`phase${phaseNum}`]?.[safeFirebaseKey(role)];
+  if (saved && Array.isArray(saved) && saved.length === keywords.length) return saved;
+  return getDefaultWeights(keywords);
+}
+
+// 배점 기반 점수 계산
+function calculateScore(checks, weights) {
+  return weights.reduce((sum, w, i) => sum + (checks[`kw${i}`] ? w : 0), 0);
+}
+
+function saveManualScore(phaseNum, roleKey, checks) {
+  if (myRole !== '모더레이터') return;
+  const safeKey = safeFirebaseKey(roleKey);
+  const state = getState();
+  if (!state.scores) state.scores = {};
+  const pk = `phase${phaseNum}`;
+  if (!state.scores[pk]) state.scores[pk] = {};
+  state.scores[pk][safeKey] = checks; // {kw0: true, kw1: false, ...}
+  saveState(state); broadcast('STATE_CHANGED', {});
+  // 헤더 배지 즉시 갱신
+  _refreshScoreBadge(phaseNum, roleKey, checks);
+}
+
+function _refreshScoreBadge(phaseNum, roleKey, checks) {
+  const badgeEl = document.getElementById(`score-badge-${phaseNum}-${roleKey}`);
+  const barEl   = document.getElementById(`score-bar-${phaseNum}-${roleKey}`);
+  const numEl   = document.getElementById(`score-num-${phaseNum}-${roleKey}`);
+  // 배점 기반 점수 계산
+  const roleSafe = roleKey.split(':')[0];
+  // safeFirebaseKey로 저장된 키에서 원본 역할명 복원 (| → /)
+  const role     = roleSafe.replace(/\|/g, '/');
+  const st       = getState();
+  const mission  = (ACTIVE_PHASES[phaseNum - 1] || {}).missions?.[role];
+  const keywords = mission?.keywords || [];
+  const weights  = getWeightsForRole(st, phaseNum, role, keywords);
+  const score    = calculateScore(checks, weights);
+  const cls   = score >= 80 ? 'score-high' : score >= 50 ? 'score-mid' : 'score-low';
+  const bar   = score >= 80 ? '#27ae60' : score >= 50 ? '#e6b800' : '#c0392b';
+  if (badgeEl) { badgeEl.className = `score-badge ${cls}`; badgeEl.textContent = `${score}점`; }
+  if (barEl)   { barEl.style.width = `${score}%`; barEl.style.background = bar; }
+  if (numEl)   { numEl.textContent = `${score}점`; numEl.style.color = score >= 80 ? '#1e8449' : score >= 50 ? '#b7950b' : '#c0392b'; }
+}
+
+function toggleCheck(phaseNum, roleKey, kwIdx, totalKw) {
+  if (myRole !== '모더레이터') return;
+  const state = getState();
+  const pk = `phase${phaseNum}`;
+  const cur = (state.scores && state.scores[pk] && state.scores[pk][roleKey]) || {};
+  const next = Object.assign({}, cur);
+  next[`kw${kwIdx}`] = !next[`kw${kwIdx}`];
+  // 체크박스 UI 즉시 토글 (re-render 없이)
+  const row = document.getElementById(`ckrow-${phaseNum}-${roleKey}-${kwIdx}`);
+  if (row) {
+    row.classList.toggle('checked', next[`kw${kwIdx}`]);
+    const box = row.querySelector('.checklist-box');
+    if (box) box.textContent = next[`kw${kwIdx}`] ? '✓' : '';
+  }
+  saveManualScore(phaseNum, roleKey, next);
+}
+
+function buildManualScoreCard(phase, phaseNum, entry, savedChecks, isModerator, myKeyOverride) {
+  const mission = phase.missions[getBaseRole(entry.role)];
+  if (!mission) return '';
+  const keywords  = mission.keywords || [];
+  const checks    = savedChecks || {};
+  const st        = getState();
+  const rk        = entry.key;
+  const rkSafe    = safeFirebaseKey(rk);
+  const phaseKey  = `phase${phaseNum}`;
+  const isSubmitted = !!(st.scoreSubmitted?.[phaseKey]?.[rkSafe]);
+  const weights   = getWeightsForRole(st, phaseNum, entry.role, keywords);
+  const score     = calculateScore(checks, weights);
+  const hasScore  = savedChecks !== null && savedChecks !== undefined;
+  const scoreClass = !hasScore ? 'score-pending' : score >= 80 ? 'score-high' : score >= 50 ? 'score-mid' : 'score-low';
+  const badgeText  = !hasScore ? '미채점' : `${score}점`;
+  const barColor   = score >= 80 ? '#27ae60' : score >= 50 ? '#e6b800' : '#c0392b';
+  const _myKey    = myKeyOverride || getRKey();
+  const isMe      = entry.key === _myKey;
+  // 이름 표시: 나이면 (나), 다른 사람이면 (이름)
+  let nameTag = '';
+  if (entry.isProxy) {
+    nameTag = ' (대리입력)';
+  } else if (entry.name) {
+    nameTag = isMe ? ' (나)' : ` (${entry.name})`;
+  }
+  const meTag = isMe ? '<span style="font-size:11px;opacity:0.8;margin-left:4px;color:#aed6f1">✦</span>' : '';
+
+  // 비모더레이터: 해당 카드가 제출 전이면 "채점 중" 표시
+  if (!isModerator && !isSubmitted) {
+    return `<div class="fb-card${isMe?' my-fb-card':''}">
+      <div class="fb-card-header" style="display:flex;align-items:center;justify-content:space-between">
+        <span>${ROLE_ICONS[entry.role]||''} ${entry.role}<span style="font-size:12px;color:#aed6f1;margin-left:4px">${nameTag}</span>${meTag}</span>
+        <span class="score-badge score-pending">채점 중</span>
+      </div>
+      <div class="fb-section"><h4>📝 작성 내용</h4>
+        <p class="${!entry.text?'empty':''}">${entry.text?escapeHtml(entry.text):'작성 내용 없음'}</p>
+      </div>
+      <div class="fb-section">
+        <p style="font-size:12px;color:var(--muted);padding:10px;background:#f7f9fc;border-radius:7px;text-align:center">⏳ 모더레이터가 채점 중입니다.<br>제출되면 결과가 표시됩니다.</p>
+      </div>
+      <div class="fb-section"><h4>📌 모범 답안</h4><p style="font-size:12px;color:#555;line-height:1.7">${escapeHtml(mission.answer)}</p></div>
+    </div>`;
+  }
+
+  const weightsTotal = weights.reduce((a, b) => a + b, 0);
+  const safeRole = entry.role.replace(/['"<>&]/g, '');
+
+  const checklistRows = keywords.map((kw, i) => {
+    const checked = !!checks[`kw${i}`];
+    const autoHit = kwMatch(entry.text, kw);
+    if (isModerator) {
+      return `<div id="ckrow-${phaseNum}-${rkSafe}-${i}" class="checklist-row${checked?' checked':''}${isSubmitted?' mod-readonly':''}" ${isSubmitted?'':'onclick="toggleCheck('+phaseNum+',\''+rkSafe+'\','+i+','+keywords.length+')"'}>
+        <div class="checklist-box">${checked?'✓':''}</div>
+        <div style="flex:1"><div class="kw-label">${escapeHtml(kw)}</div><div class="kw-sublabel">${isSubmitted?(checked?'✅ 확인됨':'—'):(autoHit?'🔍 텍스트에서 감지됨':'📝 내용 확인 후 체크')}</div></div>
+        ${!isSubmitted ? `<div style="display:flex;align-items:center;gap:4px;flex-shrink:0" onclick="event.stopPropagation()">
+          <input type="number" value="${weights[i]}" min="0" max="100"
+            onchange="updateWeight(${phaseNum},'${safeRole}',${i},this.value)"
+            style="width:46px;border:1.5px solid var(--border);border-radius:5px;padding:3px 4px;font-size:13px;text-align:center;color:var(--primary);font-family:inherit;background:white;font-weight:700">
+          <span style="font-size:11px;color:var(--muted)">점</span>
+        </div>` : `<span style="font-size:12px;font-weight:700;color:var(--primary);flex-shrink:0">${weights[i]}점</span>`}
+      </div>`;
+    } else {
+      return `<div class="checklist-row mod-readonly${checked?' checked':''}">
+        <div class="checklist-box">${checked?'✓':''}</div>
+        <div style="flex:1"><div class="kw-label">${escapeHtml(kw)}</div><div class="kw-sublabel">${checked?'✅ 확인됨':'—'}</div></div>
+        <span style="font-size:12px;font-weight:700;color:var(--primary);flex-shrink:0">${weights[i]}점</span>
+      </div>`;
+    }
+  }).join('');
+
+  return `<div class="fb-card${isMe?' my-fb-card':''}">
+    <div class="fb-card-header" style="display:flex;align-items:center;justify-content:space-between">
+      <span>${ROLE_ICONS[entry.role]||''} ${entry.role}<span style="font-size:12px;color:#aed6f1;margin-left:4px">${nameTag}</span>${meTag}</span>
+      <span id="score-badge-${phaseNum}-${rkSafe}" class="score-badge ${scoreClass}">${badgeText}</span>
+    </div>
+    <div class="fb-section"><h4>📝 작성 내용</h4>
+      <p class="${!entry.text?'empty':''}">${entry.text?escapeHtml(entry.text):'작성 내용 없음'}</p>
+    </div>
+    <div class="fb-section">
+      <h4>${isModerator?'🖊️ 채점 체크리스트':'📋 채점 결과'}</h4>
+      ${checklistRows || '<p style="color:var(--muted);font-size:12px">키워드 없음</p>'}
+      ${isModerator && !isSubmitted ? `
+        <div style="display:flex;align-items:center;justify-content:space-between;background:#f0f4fa;border-radius:7px;padding:8px 12px;margin-top:8px">
+          <span style="font-size:12px;color:var(--muted)">배점 합계</span>
+          <span id="weight-total-${phaseNum}-${safeRole}" style="font-size:14px;font-weight:700;color:${weightsTotal===100?'#27ae60':'#c0392b'}">${weightsTotal}점 ${weightsTotal===100?'✓':'(100점이 되도록 조정)'}</span>
+        </div>` : ''}
+      ${hasScore ? `
+      <div class="manual-score-total">
+        <div><div class="manual-score-label">${isModerator?'현재 점수':'모더레이터 채점'}</div></div>
+        <div id="score-num-${phaseNum}-${rkSafe}" class="manual-score-num" style="color:${score>=80?'#1e8449':score>=50?'#b7950b':'#c0392b'}">${badgeText}</div>
+      </div>
+      <div class="score-bar-wrap"><div id="score-bar-${phaseNum}-${rkSafe}" class="score-bar" style="width:${score}%;background:${barColor}"></div></div>
+      ` : isModerator ? `<p style="font-size:11px;color:var(--muted);margin-top:8px">💡 키워드를 체크하면 점수가 자동 계산됩니다</p>` : ''}
+    </div>
+    ${isModerator ? `
+    <div style="padding:10px 0 2px;display:flex;align-items:center;justify-content:flex-end;gap:8px">
+      ${!isSubmitted
+        ? `<button onclick="submitScores(${phaseNum},'${rkSafe}')" style="padding:7px 18px;background:#1a3a5c;color:white;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background 0.2s" onmouseover="this.style.background='#244f7a'" onmouseout="this.style.background='#1a3a5c'">✅ 제출하기</button>`
+        : `<span style="font-size:12px;font-weight:600;color:#27ae60">✅ 제출됨</span>
+           <button onclick="editScores(${phaseNum},'${rkSafe}')" style="padding:7px 16px;background:white;color:#e67e22;border:2px solid #e67e22;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.2s" onmouseover="this.style.background='#fef9f0'" onmouseout="this.style.background='white'">✏️ 수정하기</button>`
+      }
+    </div>` : ''}
+    <div class="fb-section"><h4>📌 모범 답안</h4><p style="font-size:12px;color:#555;line-height:1.7">${escapeHtml(mission.answer)}</p></div>
+  </div>`;
+}
+
+// ─── 역할 표시 순서 정렬 ────────────────────────────────
+// 기본 순서: 모더레이터, 담임교사, 보건(담당)교사, 영양(교)사, 행정실, 교장/교감, 교육(지원)청, 유관기관
+const ROLE_DISPLAY_ORDER = ['모더레이터', '담임교사', '보건(담당)교사', '영양(교)사', '행정실', '교장/교감', '교육(지원)청', '유관기관'];
+
+// 역할 배열을 기본 순서 + 접속한 역할 우선으로 정렬
+// 접속한 역할 먼저, 미접속(프록시) 역할 나중에, 동일 그룹 내에서는 ROLE_DISPLAY_ORDER 순서 유지
+function sortRolesForDisplay(roles, participants) {
+  const connectedRoles = new Set(
+    Object.values(participants || {}).map(p => p.role).filter(r => r && r !== '모더레이터')
+  );
+  const order = r => {
+    const idx = ROLE_DISPLAY_ORDER.indexOf(r);
+    return idx === -1 ? 99 : idx;
+  };
+  const connected = roles.filter(r => connectedRoles.has(r)).sort((a, b) => order(a) - order(b));
+  const missing   = roles.filter(r => !connectedRoles.has(r)).sort((a, b) => order(a) - order(b));
+  return [...connected, ...missing];
+}
+
+function buildInlineFeedbackHtml(phase, phaseResponses, participants) {
+  participants = participants || {};
+  const state = getState();
+  const phaseNum = state.currentPhase;
+  const phaseScores = (state.scores && state.scores[`phase${phaseNum}`]) || {};
+  const isModerator = myRole === '모더레이터';
+
+  const cards = sortRolesForDisplay(getActiveRoles(phase).filter(r => r !== '모더레이터'), participants).flatMap(role => {
+    const mission = phase.missions[getBaseRole(role)];
+    if (!mission) return [];
+    const entries = getRoleEntries(phaseResponses, participants, role);
+    return entries.map(e => {
+      const savedChecks = phaseScores[safeFirebaseKey(e.key)] ?? null;
+      return buildManualScoreCard(phase, phaseNum, {...e, role}, savedChecks, isModerator);
+    });
+  }).join('');
+
+  return `<div style="margin-top:24px;padding-top:20px;border-top:2px solid var(--border)">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:14px">📊 피드백 — ${isModerator?'모더레이터 채점':'채점 결과'}</h3>
+    <div class="fb-grid">${cards}</div>
+  </div>`;
+}
+
+function renderPhaseFeedback(body, state) {
+  const phase = ACTIVE_PHASES[state.currentPhase - 1];
+  const phaseNum = state.currentPhase;
+  const phaseKey = `phase${phaseNum}`;
+  const phaseResponses = (state.responses || {})[phaseKey] || {};
+  const phaseScores = (state.scores && state.scores[phaseKey]) || {};
+  const isLast = phaseNum === 3;
+  const isModerator = myRole === '모더레이터';
+
+  // ✅ 수정: roleHistory 기반으로 해당 단계 당시 역할로 participants 재구성
+  const phaseRoleHistory = (state.roleHistory && state.roleHistory[phaseKey]) || {};
+  const currentParticipants = state.participants || {};
+  let participants;
+  if (Object.keys(phaseRoleHistory).length > 0) {
+    participants = {};
+    Object.entries(currentParticipants).forEach(([name, info]) => {
+      const historicRole = phaseRoleHistory[name];
+      participants[name] = historicRole ? { ...info, role: historicRole } : info;
+    });
+    Object.entries(phaseRoleHistory).forEach(([name, role]) => {
+      if (!participants[name]) participants[name] = { name, role };
+    });
+  } else {
+    participants = currentParticipants;
+  }
+
+  const FEEDBACK_ROLE_ORDER = ['담임교사', '보건(담당)교사', '영양(교)사', '행정실', '교장/교감', '교육(지원)청', '유관기관'];
+  const activeRolesF = getActiveRoles(phase).filter(r => r !== '모더레이터');
+  const sortedRolesF = [...activeRolesF].sort((a, b) => {
+    const ai = FEEDBACK_ROLE_ORDER.indexOf(a); const bi = FEEDBACK_ROLE_ORDER.indexOf(b);
+    return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+  });
+  const myPhaseRole = (!isModerator && state.roleHistory?.[phaseKey]?.[myName]) || myRole;
+  const myPhaseKey = `${safeFirebaseKey(myPhaseRole)}:${myName}`;
+  const allFbEntries = sortedRolesF.flatMap(role => {
+    const mission = phase.missions[getBaseRole(role)];
+    if (!mission) return [];
+    return getRoleEntries(phaseResponses, participants, role).map(e => ({
+      role, entry: e,
+      savedChecks: phaseScores[safeFirebaseKey(e.key)] ?? null,
+      isMe: !isModerator && e.key === myPhaseKey
+    }));
+  });
+  const orderedFbEntries = isModerator ? allFbEntries : [...allFbEntries.filter(c => c.isMe), ...allFbEntries.filter(c => !c.isMe)];
+
+  const ROLE_SHORT = { '담임교사':'담임', '보건(담당)교사':'보건', '영양(교)사':'영양', '행정실':'행정실', '교장/교감':'교장/교감', '교육(지원)청':'교육청', '유관기관':'유관기관' };
+  let filterBarHtml = '';
+  let cards = '';
+  if (!isModerator) {
+    const filterRoles = sortedRolesF.filter(r => phase.missions[getBaseRole(r)]);
+    filterBarHtml = `<div class="fb-filter-bar" id="fb-filter-bar">
+      <button class="fb-filter-btn active" data-filter="all" onclick="filterFbCards('all')">전체</button>
+      <button class="fb-filter-btn" data-filter="me" onclick="filterFbCards('me')">나</button>
+      ${filterRoles.map(r => `<button class="fb-filter-btn" data-filter="${r}" onclick="filterFbCards('${r}')">${ROLE_SHORT[r]||r}</button>`).join('')}
+    </div>`;
+    cards = orderedFbEntries.map(c =>
+      `<div class="fb-card-wrap" data-role="${c.role}" data-is-me="${c.isMe}">${buildManualScoreCard(phase, phaseNum, {...c.entry, role: c.role}, c.savedChecks, isModerator, myPhaseKey)}</div>`
+    ).join('');
+  } else {
+    cards = orderedFbEntries.map(c =>
+      buildManualScoreCard(phase, phaseNum, {...c.entry, role: c.role}, c.savedChecks, isModerator, myPhaseKey)
+    ).join('');
+  }
+
+  const nextPhaseDur = !isLast && ACTIVE_PHASES[phaseNum] ? Math.round(ACTIVE_PHASES[phaseNum].duration / 60) : 5;
+  const modControls = myRole === '모더레이터' ? `
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;min-width:220px">
+      ${!isLast ? `
+      <div style="background:#f7f9fc;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">⏱ ${phaseNum+1}단계 시간 설정</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <button onclick="changeDuration(-1)" style="width:30px;height:30px;border:2px solid var(--border);border-radius:7px;background:white;font-size:16px;font-weight:700;cursor:pointer;color:var(--primary);display:flex;align-items:center;justify-content:center">−</button>
+          <div style="display:flex;align-items:center;gap:5px;background:white;border:2px solid var(--primary);border-radius:7px;padding:5px 10px">
+            <input type="number" id="duration-input" value="${nextPhaseDur}" min="1" max="60" style="width:34px;border:none;outline:none;font-size:16px;font-weight:800;font-family:inherit;text-align:center;color:var(--primary);background:transparent">
+            <span style="font-size:13px;color:var(--muted)">분</span>
+          </div>
+          <button onclick="changeDuration(1)" style="width:30px;height:30px;border:2px solid var(--border);border-radius:7px;background:white;font-size:16px;font-weight:700;cursor:pointer;color:var(--primary);display:flex;align-items:center;justify-content:center">+</button>
+        </div>
+        <button class="btn-next-phase" onclick="nextPhaseWithDuration()" style="width:100%;padding:10px;font-size:14px">▶ ${phaseNum+1}단계 시작</button>
+      </div>` : `<button class="btn-next-phase" onclick="nextPhase()" style="padding:12px 20px">💡 최종 피드백 보기</button>`}
+      <button class="btn-prev-phase" onclick="prevPhase()" style="width:100%;margin-right:0;text-align:center;justify-content:center">◀ ${phaseNum}단계로 돌아가기</button>
+      <button onclick="showQRModal(roomCode)" style="width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:8px;background:white;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;color:var(--muted);transition:all 0.2s;display:flex;align-items:center;gap:6px;justify-content:center" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">📱 QR 재공유</button>
+    </div>` : `<p style="font-size:13px;color:var(--muted);margin-top:6px">모더레이터가 다음 단계를 진행합니다.</p>`;
+
+  body.innerHTML = `<div style="flex:1">
+    <div class="fb-summary" style="margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px">
+        <div style="flex:1;min-width:180px">
+          <h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;word-break:keep-all">
+            <span style="background:${phase.color};color:white;border-radius:6px;padding:3px 10px;font-size:13px;white-space:nowrap">${phase.emoji} ${phaseNum}단계</span>
+            <span>피드백 — ${phase.title}</span>
+          </h3>
+          <p style="font-size:13px;color:var(--muted);margin-top:6px">📅 ${phase.date} · ${isModerator ? '채점 체크리스트를 클릭해 채점하고 제출하세요.' : '모더레이터 채점 결과를 확인하세요.'}</p>
+        </div>
+        ${modControls}
+      </div>
+    </div>
+    ${renderRoleAnnouncementBanner(state)}
+    ${myRole === '모더레이터' ? renderRoleReassignPanel(state) : ''}
+    ${filterBarHtml}
+    <div class="fb-grid">${cards}</div>
+  </div>`;
+}
+
+function filterFbCards(filter) {
+  document.querySelectorAll('.fb-filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filter);
+  });
+  document.querySelectorAll('.fb-card-wrap').forEach(wrap => {
+    if (filter === 'all') {
+      wrap.style.display = '';
+    } else if (filter === 'me') {
+      wrap.style.display = wrap.dataset.isMe === 'true' ? '' : 'none';
+    } else {
+      wrap.style.display = wrap.dataset.role === filter ? '' : 'none';
+    }
+  });
+}
+
+function renderParticipantsList(state, phaseNum) {
+  const participants = state.participants || {};
+  const phaseResponses = (state.responses || {})[`phase${phaseNum}`] || {};
+  return PARTICIPANT_ROLES.map(role => {
+    const rolePeople = Object.values(participants).filter(p => p.role === role);
+    const submitted = phaseResponses[`${role}_submitted`];
+    const hasText = phaseResponses[role] && phaseResponses[role].length > 0;
+    const isProxy = phaseResponses[`${role}_proxy`];
+    if (!rolePeople.length) {
+      return `<div class="participant-item"><div class="p-dot"></div><div><div>${ROLE_ICONS[role]||''} ${role}</div><div class="p-role">미접속</div></div></div>`;
+    }
+    return rolePeople.map(p => {
+      const pk = `${safeFirebaseKey(role)}:${p.name}`;
+      const pSubmitted = phaseResponses[`${pk}_submitted`] || false;
+      const pText = phaseResponses[pk] && phaseResponses[pk].length > 0;
+      return `<div class="participant-item">
+        <div class="p-dot ${pSubmitted?'submitted':'online'}"></div>
+        <div><div>${ROLE_ICONS[role]||''} ${role}</div>
+        <div class="p-role">${p.name} · ${pSubmitted?'✅ 제출완료':pText?'✏️ 작성중':'대기중'}</div></div>
+      </div>`;
+    }).join('');
+  }).join('');
+}
+
+function renderAllRoleCards(phase, phaseResponses, excludeKey, participants) {
+  participants = participants || {};
+  const activeRoles = getActiveRoles(phase).filter(r => r !== '모더레이터');
+  return activeRoles.flatMap(role => {
+    const entries = getRoleEntries(phaseResponses, participants, role);
+    return entries.map(e => {
+      if (e.key === excludeKey) return '';
+      // 이름 표시: 나이면 (나), 다른 사람이면 (이름)
+      const isMyCard = e.key === excludeKey;
+      const nameSuffix = e.isProxy ? '' : e.name ? (isMyCard ? ' (나)' : ` (${e.name})`) : '';
+      const label = `${ROLE_ICONS[role]||''} ${role}<span style="font-size:11px;font-weight:400;opacity:0.75">${nameSuffix}</span>`;
+      const statusClass = e.submitted ? 'status-submitted' : e.text ? 'status-typing' : 'status-waiting';
+      const statusText = e.submitted ? (e.isProxy ? '🔄 대리입력' : '✅ 제출완료') : e.text ? '✏️ 작성중...' : '대기중';
+      return `<div class="other-role-card-wrap" data-role="${role}"><div class="response-card">
+        <div class="response-card-header">
+          <span>${label}</span>
+          <span class="response-status ${statusClass}">${statusText}</span>
+        </div>
+        <div class="response-text ${!e.text?'empty':''}">${e.text?escapeHtml(e.text):'아직 작성 내용이 없습니다.'}</div>
+      </div></div>`;
+    }).join('');
+  }).join('');
+}
+
+const OTHER_FILTER_ROLE_ORDER = ['담임교사','보건(담당)교사','행정실','교장/교감','교육(지원)청','유관기관'];
+const OTHER_FILTER_ROLE_LABELS = {'담임교사':'담임','보건(담당)교사':'보건','행정실':'행정실','교장/교감':'교장/교감','교육(지원)청':'교육청','유관기관':'유관기관'};
+
+function renderOtherRolesFilterBar(phase) {
+  const activeRoles = getActiveRoles(phase).filter(r => r !== '모더레이터');
+  const sorted = [...activeRoles].sort((a,b) => {
+    const ai = OTHER_FILTER_ROLE_ORDER.indexOf(a), bi = OTHER_FILTER_ROLE_ORDER.indexOf(b);
+    return (ai<0?999:ai)-(bi<0?999:bi);
+  });
+  const btns = sorted.map(r =>
+    `<button class="other-filter-btn" data-filter="${r}" onclick="filterOtherRoles('${r}')">${OTHER_FILTER_ROLE_LABELS[r]||r}</button>`
+  ).join('');
+  return `<div class="other-filter-bar"><button class="other-filter-btn active" data-filter="all" onclick="filterOtherRoles('all')">전체</button>${btns}</div>`;
+}
+
+function filterOtherRoles(filter) {
+  document.querySelectorAll('.other-filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filter);
+  });
+  document.querySelectorAll('.other-role-card-wrap').forEach(wrap => {
+    wrap.style.display = (filter === 'all' || wrap.dataset.role === filter) ? '' : 'none';
+  });
+}
+
+function renderFeedbackTransition() {
+  document.getElementById('screen-exercise').style.display = 'none';
+  document.getElementById('screen-feedback').style.display = 'block';
+  renderFeedback();
+  applyFontSize(); // 피드백 화면에도 저장된 글씨 크기 적용
+}
+
+// ═══════════════════════════════════════════════════════
+//  ACTIONS
+// ═══════════════════════════════════════════════════════
+function lobbyChangeDuration(delta) {
+  const inp = document.getElementById('lobby-duration-input');
+  if (!inp) return;
+  const cur = parseInt(inp.value) || 5;
+  inp.value = Math.max(1, Math.min(60, cur + delta));
+}
+function startPhaseWithTimer(phaseNum) {
+  if (myRole !== '모더레이터') return;
+  const inp = document.getElementById('lobby-duration-input');
+  const minutes = inp ? Math.max(1, Math.min(60, parseInt(inp.value) || 5)) : 5;
+  const state = getState();
+  if (state.roleAnnouncement && state.roleAnnouncement.assignments) {
+    Object.entries(state.roleAnnouncement.assignments).forEach(([name, newRole]) => {
+      if (state.participants && state.participants[name]) state.participants[name].role = newRole;
+    });
+    state.roleAnnouncement = null;
+  }
+  state.currentPhase = phaseNum;
+  state.phaseDuration = minutes * 60;
+  state.phaseStartTime = Date.now();
+  state.timerRunning = true; state.timerPaused = false; state.timerPausedRemaining = null;
+  state.showingFeedback = false;
+  if (!state.roleHistory) state.roleHistory = {};
+  state.roleHistory[`phase${phaseNum}`] = {};
+  Object.entries(state.participants || {}).forEach(([name, info]) => {
+    state.roleHistory[`phase${phaseNum}`][name] = info.role;
+  });
+  saveState(state); broadcast('PHASE_CHANGE', { phase: phaseNum }); renderExercise();
+}
+function startPhase(phaseNum, durationSeconds) {
+  if (myRole !== '모더레이터') return;
+  const state = getState();
+  // 역할 재배정 공지가 있으면 participants에 반영 후 공지 초기화
+  if (state.roleAnnouncement && state.roleAnnouncement.assignments) {
+    Object.entries(state.roleAnnouncement.assignments).forEach(([name, newRole]) => {
+      if (state.participants && state.participants[name]) state.participants[name].role = newRole;
+    });
+    state.roleAnnouncement = null;
+  }
+  state.currentPhase = phaseNum; state.phaseStartTime = null;
+  state.timerRunning = false; state.timerPaused = false; state.timerPausedRemaining = null;
+  state.showingFeedback = false;
+  // 역할 이력 저장: 이 단계에서 각 참가자가 어떤 역할이었는지 기록
+  if (!state.roleHistory) state.roleHistory = {};
+  state.roleHistory[`phase${phaseNum}`] = {};
+  Object.entries(state.participants || {}).forEach(([name, info]) => {
+    state.roleHistory[`phase${phaseNum}`][name] = info.role;
+  });
+  saveState(state); broadcast('PHASE_CHANGE', { phase: phaseNum }); renderExercise();
+}
+function changeDuration(delta) {
+  const inp = document.getElementById('duration-input');
+  if (!inp) return;
+  const cur = parseInt(inp.value) || 5;
+  inp.value = Math.max(1, Math.min(60, cur + delta));
+}
+function startTimer() {
+  if (myRole !== '모더레이터') return;
+  const inp = document.getElementById('duration-input');
+  const minutes = inp ? Math.max(1, Math.min(60, parseInt(inp.value) || 5)) : 5;
+  const state = getState();
+  state.phaseDuration = minutes * 60;
+  state.phaseStartTime = Date.now(); state.timerRunning = true;
+  saveState(state); broadcast('STATE_CHANGED', {}); renderExercise();
+}
+function pauseTimer() {
+  if (myRole !== '모더레이터') return;
+  const state = getState();
+  if (!state.timerRunning || state.timerPaused) return;
+  const remaining = getTimeRemaining();
+  state.timerPaused = true;
+  state.timerPausedRemaining = remaining;
+  saveState(state); broadcast('STATE_CHANGED', {}); renderExercise();
+}
+function resumeTimer() {
+  if (myRole !== '모더레이터') return;
+  const state = getState();
+  if (!state.timerRunning || !state.timerPaused) return;
+  const inp = document.getElementById('paused-duration-input');
+  let remaining;
+  if (inp) {
+    const currentMins = parseInt(inp.value) || 1;
+    const exactSecs = parseInt(inp.dataset.exactSecs);
+    // 사용자가 분을 변경했는지 확인: 변경 없으면 정확한 초 사용, 변경했으면 분 단위로 적용
+    const originalMins = Math.max(1, Math.round(exactSecs / 60));
+    remaining = (currentMins !== originalMins)
+      ? Math.max(1, Math.min(60, currentMins)) * 60
+      : exactSecs;
+  } else {
+    remaining = state.timerPausedRemaining != null ? state.timerPausedRemaining : 0;
+  }
+  state.timerPaused = false;
+  state.timerPausedRemaining = null;
+  state.phaseStartTime = Date.now() - ((state.phaseDuration || 300) - remaining) * 1000;
+  saveState(state); broadcast('STATE_CHANGED', {}); renderExercise();
+}
+function changePausedDuration(delta) {
+  const inp = document.getElementById('paused-duration-input');
+  if (!inp) return;
+  const cur = parseInt(inp.value) || 1;
+  inp.value = Math.max(1, Math.min(60, cur + delta));
+}
+function resetPhaseTimer() {
+  if (myRole !== '모더레이터') return;
+  const state = getState();
+  const inp = document.getElementById('duration-input');
+  const minutes = inp ? Math.max(1, Math.min(60, parseInt(inp.value) || 5)) : 5;
+  state.phaseDuration = minutes * 60;
+  state.phaseStartTime = Date.now();
+  state.timerRunning = true;
+  state.timerPaused = false;
+  state.timerPausedRemaining = null;
+  saveState(state); broadcast('STATE_CHANGED', {}); renderExercise();
+}
+
+// ─── 미제출 채점 일괄 제출 ───────────────────────────────
+function autoSubmitAllScores(state) {
+  const phaseNum = state.currentPhase;
+  const phaseKey = `phase${phaseNum}`;
+  const phaseScores = (state.scores && state.scores[phaseKey]) || {};
+  if (!state.scoreSubmitted) state.scoreSubmitted = {};
+  if (!state.scoreSubmitted[phaseKey] || typeof state.scoreSubmitted[phaseKey] !== 'object') {
+    state.scoreSubmitted[phaseKey] = {};
+  }
+  Object.keys(phaseScores).forEach(roleKey => {
+    if (!state.scoreSubmitted[phaseKey][roleKey]) {
+      state.scoreSubmitted[phaseKey][roleKey] = true;
+    }
+  });
+}
+
+// ─── 채점 제출 / 수정 ────────────────────────────────────
+function submitScores(phaseNum, roleKey) {
+  if (myRole !== '모더레이터') return;
+  const state = getState();
+  if (!state.scoreSubmitted) state.scoreSubmitted = {};
+  const pk = `phase${phaseNum}`;
+  if (!state.scoreSubmitted[pk] || typeof state.scoreSubmitted[pk] !== 'object') state.scoreSubmitted[pk] = {};
+  state.scoreSubmitted[pk][roleKey] = true;
+  saveState(state); broadcast('STATE_CHANGED', {}); renderExercise();
+}
+
+function editScores(phaseNum, roleKey) {
+  if (myRole !== '모더레이터') return;
+  const state = getState();
+  if (!state.scoreSubmitted) state.scoreSubmitted = {};
+  const pk = `phase${phaseNum}`;
+  if (!state.scoreSubmitted[pk] || typeof state.scoreSubmitted[pk] !== 'object') state.scoreSubmitted[pk] = {};
+  state.scoreSubmitted[pk][roleKey] = false;
+  saveState(state); broadcast('STATE_CHANGED', {}); renderExercise();
+}
+
+// ─── 배점 수정 ───────────────────────────────────────────
+function updateWeight(phaseNum, role, kwIdx, value) {
+  if (myRole !== '모더레이터') return;
+  const state   = getState();
+  const phaseKey = `phase${phaseNum}`;
+  if (!state.scoreWeights) state.scoreWeights = {};
+  if (!state.scoreWeights[phaseKey]) state.scoreWeights[phaseKey] = {};
+  const keywords = (ACTIVE_PHASES[phaseNum - 1] || {}).missions?.[role]?.keywords || [];
+  const cur = getWeightsForRole(state, phaseNum, role, keywords).slice();
+  cur[kwIdx] = Math.max(0, Math.min(100, parseInt(value) || 0));
+  state.scoreWeights[phaseKey][safeFirebaseKey(role)] = cur;
+  // 합계 표시 즉시 DOM 업데이트
+  const total = cur.reduce((a, b) => a + b, 0);
+  const safeRole = role.replace(/['"<>&\/]/g, '');
+  const totalEl = document.getElementById(`weight-total-${phaseNum}-${safeRole}`);
+  if (totalEl) {
+    totalEl.textContent = `${total}점 ${total === 100 ? '✓' : '(100점이 되도록 조정)'}`;
+    totalEl.style.color = total === 100 ? '#27ae60' : '#c0392b';
+  }
+  // 해당 역할의 각 점수 배지 즉시 갱신
+  const phaseScores = (state.scores && state.scores[phaseKey]) || {};
+  Object.keys(phaseScores).forEach(rk => {
+    if (rk.split(':')[0] === safeFirebaseKey(role)) _refreshScoreBadge(phaseNum, rk, phaseScores[rk]);
+  });
+  saveState(state); broadcast('STATE_CHANGED', {});
+}
+function nextPhaseWithDuration() {
+  if (myRole !== '모더레이터') return;
+  const inp = document.getElementById('duration-input');
+  const minutes = inp ? Math.max(1, Math.min(60, parseInt(inp.value) || 5)) : 5;
+  const state = getState();
+  const next = state.currentPhase + 1;
+  if (next > 3) return;
+  // 역할 재배정 공지 반영
+  if (state.roleAnnouncement && state.roleAnnouncement.assignments) {
+    Object.entries(state.roleAnnouncement.assignments).forEach(([name, newRole]) => {
+      if (state.participants && state.participants[name]) state.participants[name].role = newRole;
+    });
+    state.roleAnnouncement = null;
+  }
+  state.currentPhase = next;
+  state.phaseDuration = minutes * 60;
+  state.phaseStartTime = Date.now();
+  state.timerRunning = true;
+  state.timerPaused = false;
+  state.timerPausedRemaining = null;
+  state.showingFeedback = false;
+  // 역할 이력 저장: 이 단계에서 각 참가자가 어떤 역할인지 기록
+  if (!state.roleHistory) state.roleHistory = {};
+  state.roleHistory[`phase${next}`] = {};
+  Object.entries(state.participants || {}).forEach(([name, info]) => {
+    state.roleHistory[`phase${next}`][name] = info.role;
+  });
+  saveState(state); broadcast('PHASE_CHANGE', { phase: next }); renderExercise();
+}
+function nextPhase() {
+  if (myRole !== '모더레이터') return;
+  const state = getState();
+  if (!state.showingFeedback) {
+    state.timerRunning = false; state.showingFeedback = true;
+    autoSubmitAllScores(state);
+    saveState(state); broadcast('PHASE_CHANGE', {}); renderExercise();
+  } else {
+    const next = state.currentPhase + 1;
+    if (next > 4) return;
+    if (next <= 3) { startPhase(next); }
+    else {
+      state.currentPhase = 4; state.timerRunning = false; state.showingFeedback = false;
+      saveState(state); broadcast('PHASE_CHANGE', { phase: 4 }); renderExercise();
+    }
+  }
+}
+function prevPhase() {
+  if (myRole !== '모더레이터') return;
+  const state = getState();
+  if (state.showingFeedback) {
+    // 피드백 화면 → 해당 단계 진행 화면으로 (타이머 종료 상태)
+    state.showingFeedback = false; saveState(state); broadcast('PHASE_CHANGE', {}); renderExercise();
+  } else {
+    const prev = state.currentPhase - 1;
+    if (prev < 0) return;
+    if (prev === 0) {
+      // 1단계 → 대기실로 돌아가기
+      state.currentPhase = 0; state.timerRunning = false;
+      state.timerPaused = false; state.timerPausedRemaining = null;
+      state.phaseStartTime = null; state.showingFeedback = false;
+      saveState(state); broadcast('PHASE_CHANGE', { phase: 0 }); renderExercise();
+    } else {
+      // 이전 단계의 피드백(채점) 화면을 바로 보여줌 → 기록 확인 가능
+      state.currentPhase = prev; state.timerRunning = false;
+      state.timerPaused = false; state.timerPausedRemaining = null;
+      state.phaseStartTime = null; state.showingFeedback = true;
+      saveState(state); broadcast('PHASE_CHANGE', { phase: prev }); renderExercise();
+    }
+  }
+}
+function goBackFromFeedback() {
+  if (myRole !== '모더레이터') return;
+  const state = getState(); state.currentPhase = 3; state.timerRunning = false; state.phaseStartTime = null;
+  saveState(state); broadcast('PHASE_CHANGE', { phase: 3 });
+  document.getElementById('screen-feedback').style.display = 'none';
+  document.getElementById('screen-exercise').style.display = 'flex';
+  renderExercise();
+}
+function saveMyDraft(text) {
+  const state = getState();
+  if (!state.responses) state.responses = {};
+  const key = `phase${state.currentPhase}`;
+  if (!state.responses[key]) state.responses[key] = {};
+  state.responses[key][getRKey()] = text;
+  saveState(state); broadcast('RESPONSE_UPDATE', {});
+}
+function submitResponse() {
+  const ta = document.getElementById('my-textarea');
+  const text = ta ? ta.value.trim() : '';
+  const state = getState();
+  if (!state.responses) state.responses = {};
+  const key = `phase${state.currentPhase}`;
+  if (!state.responses[key]) state.responses[key] = {};
+  const rk = getRKey();
+  state.responses[key][rk] = text;
+  state.responses[key][`${rk}_submitted`] = true;
+  saveState(state); broadcast('RESPONSE_UPDATE', {}); renderExercise();
+}
+function editResponse() {
+  const state = getState();
+  const key = `phase${state.currentPhase}`;
+  const rk = getRKey();
+  if (state.responses && state.responses[key]) {
+    state.responses[key][`${rk}_submitted`] = false;
+  }
+  saveState(state); broadcast('RESPONSE_UPDATE', {}); renderExercise();
+}
+
+// ═══════════════════════════════════════════════════════
+//  FEEDBACK SCREEN
+// ═══════════════════════════════════════════════════════
+function renderFeedback() {
+  const state = getState();
+  const responses = state.responses || {};
+  const fb = document.getElementById('fb-body');
+  let html = `<div class="fb-summary">
+    ${myRole === '모더레이터' ? `<button class="btn-prev-phase" style="margin-bottom:14px" onclick="goBackFromFeedback()">◀ 3단계로 돌아가기</button><br>` : ''}
+    <h3>훈련 완료 — 피드백 및 토의 시간 (5분)</h3>
+    <p>아래 각 역할별 작성 내용을 정답 키워드와 비교하여 누락된 항목을 확인하고, 우리 학교 상황에 맞게 보완할 점을 모더레이터 주도하에 함께 토의합니다.</p>
+  </div>`;
+
+  const isModerator = myRole === '모더레이터';
+  ACTIVE_PHASES.forEach((phase, idx) => {
+    const phaseKey = `phase${phase.id}`;
+    const phaseResponses = responses[phaseKey] || {};
+    const phaseScores = (state.scores && state.scores[phaseKey]) || {};
+    // 이 단계에서 현재 참가자가 가졌던 역할로 "나" 키 결정
+    const myPhaseRole = (!isModerator && state.roleHistory?.[phaseKey]?.[myName]) || myRole;
+    const myPhaseKey  = `${myPhaseRole}:${myName}`;
+    const sectionId   = `fb-phase-section-${phase.id}`;
+    // 1단계는 기본 펼침, 나머지는 접힘
+    const isOpen = idx === 0;
+
+    // ★ 핵심 수정: 이 단계의 roleHistory를 기준으로 participants를 재구성
+    // 역할이 단계마다 바뀐 경우에도 해당 단계의 응답(역할:이름 키)을 올바르게 찾을 수 있도록 함
+    const phaseRoleHistory = (state.roleHistory && state.roleHistory[phaseKey]) || {};
+    const currentParticipants = state.participants || {};
+    let phaseParticipants;
+    if (Object.keys(phaseRoleHistory).length > 0) {
+      // roleHistory가 있으면: 각 참가자의 역할을 해당 단계 당시 역할로 교체
+      phaseParticipants = {};
+      Object.entries(currentParticipants).forEach(([name, info]) => {
+        const historicRole = phaseRoleHistory[name];
+        phaseParticipants[name] = historicRole
+          ? { ...info, role: historicRole }
+          : info;
+      });
+      // roleHistory에는 있지만 현재 participants에 없는 참가자도 복원
+      // (퇴장한 참가자의 응답도 피드백에 표시)
+      Object.entries(phaseRoleHistory).forEach(([name, role]) => {
+        if (!phaseParticipants[name]) {
+          phaseParticipants[name] = { name, role };
+        }
+      });
+    } else {
+      // roleHistory가 없으면 현재 participants 그대로 사용
+      phaseParticipants = currentParticipants;
+    }
+
+    html += `<div class="fb-phase-section">
+      <div class="fb-phase-title" style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between"
+           onclick="toggleFbSection('${sectionId}','${sectionId}-icon')">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="fb-phase-badge" style="background:${phase.color}">${phase.emoji} ${phase.id}단계</span>
+          <span>${phase.title}</span>
+          <small style="color:var(--muted);font-weight:400;font-size:13px">${phase.date}</small>
+        </div>
+        <span id="${sectionId}-icon" style="font-size:12px;color:var(--muted);margin-left:8px">${isOpen?'▲':'▼'}</span>
+      </div>
+      <div id="${sectionId}" style="display:${isOpen?'block':'none'}">
+        <div class="fb-grid">
+          ${sortRolesForDisplay(getActiveRoles(phase).filter(r => r !== '모더레이터'), phaseParticipants).flatMap(role => {
+            const mission = phase.missions[getBaseRole(role)];
+            if (!mission) return [];
+            const entries = getRoleEntries(phaseResponses, phaseParticipants, role);
+            return entries.map(e => {
+              const savedChecks = phaseScores[e.key] ?? null;
+              return buildManualScoreCard(phase, phase.id, {...e, role}, savedChecks, isModerator, myPhaseKey);
+            });
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html += `<div style="text-align:center;padding:20px 0 40px">
+    <button class="btn-restart" onclick="resetAll()">🔄 훈련 다시 시작</button>
+  </div>`;
+  fb.innerHTML = html;
+}
+
+function clearRoomFromUrl() {
+  // URL에서 room 파라미터 제거 후 페이지 초기화
+  const url = new URL(location.href);
+  url.searchParams.delete('room');
+  location.replace(url.toString());
+}
+
+function resetAll() {
+  if (confirm('훈련을 처음부터 다시 시작하시겠습니까? 모든 응답이 초기화됩니다.')) {
+    if (dbRef) {
+      const fresh = defaultState();
+      fresh.scenarioId = currentScenarioId;
+      fresh.groupNum = myGroup;
+      fresh.roomCode = roomCode;
+      fresh.createdAt = Date.now();
+      dbRef.set(fresh);
+    }
+    // room 파라미터 제거 후 리로드 (방 코드 잔류 방지)
+    const url = new URL(location.href);
+    url.searchParams.delete('room');
+    location.replace(url.toString());
+  }
+}
+
+// 관리자 패널 기능은 admin.html 로 분리되었습니다.
+
+// (관리자 패널 함수들은 admin.html 로 이동되었습니다)
+
+function showToast(msg) {
+  const t = document.getElementById('saved-toast');
+  t.textContent = msg || '✅ 저장되었습니다';
+  t.style.display = 'block';
+  t.style.animation = 'none';
+  setTimeout(() => { t.style.animation = 'slideUp 0.3s ease'; }, 10);
+  setTimeout(() => { t.style.display = 'none'; }, 2200);
+}
+
+// ═══════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════
+function escapeHtml(str) {
+  return String(str).replace(/<br\s*\/?>/gi,'\n').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+}
+function escapeForTextarea(str) {
+  // textarea 안에서는 \n이 줄바꿈으로 렌더링되므로 <br>로 변환하지 않음
+  return String(str).replace(/<br\s*\/?>/gi,'\n').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(str) {
+  return String(str||'').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+renderHomeScenarios();
+
+
+window.addEventListener('load', async () => {
+  // Firebase 전역 설정에서 groupCount 로드
+  try {
+    const snap = await db.ref('settings/groupCount').get();
+    if (snap.exists()) localStorage.setItem('ttx_group_count', String(snap.val()));
+  } catch(e) {}
+
+  // Firebase 시나리오 실시간 리스너 (관리자 수정 즉시 전체 반영)
+  db.ref('settings/scenarios').on('value', (snap) => {
+    if (!snap.exists()) return;
+    try {
+      const scenarios = scenariosFromFirebase(snap.val());
+      if (!scenarios) return;
+      localStorage.setItem('ttx_admin_scenarios', JSON.stringify(scenarios));
+
+      // 홈 화면 시나리오 카드 갱신
+      renderHomeScenarios();
+
+      // 현재 진행 중인 세션의 시나리오도 즉시 갱신
+      if (currentScenarioId) {
+        const updated = scenarios.find(s => s.id === currentScenarioId);
+        if (updated) {
+          ACTIVE_SCENARIO = updated;
+          ACTIVE_PHASES = updated.phases;
+          // 훈련 화면이 열려 있으면 재렌더링
+          const exScreen = document.getElementById('screen-exercise');
+          if (exScreen && exScreen.style.display !== 'none') {
+            renderExercise();
+          }
+        }
+      }
+    } catch(e) {}
+  });
+
+  // URL에 room 파라미터가 있으면 바로 로그인 화면으로 이동
+  const urlParams = new URLSearchParams(location.search);
+  const roomParam = urlParams.get('room');
+  if (roomParam) {
+    // 방 코드 입력란에 자동 채우기
+    const rcInput = document.getElementById('room-code-input');
+    if (rcInput) rcInput.value = roomParam.toUpperCase();
+    // room 코드에서 시나리오 ID, 그룹 번호 파싱 시도
+    // 형식: INFL-3조-XXXX
+    const parts = roomParam.split('-');
+    if (parts.length >= 3) {
+      const prefix = parts[0].toLowerCase();
+      const scenarios = getScenarios();
+      const matched = scenarios.find(s => s.id.toLowerCase().startsWith(prefix) || prefix.startsWith(s.id.toLowerCase().substring(0,4)));
+      if (matched) {
+        selectScenario(matched.id);
+        const grpNum = parseInt(parts[1].replace('조',''));
+        if (grpNum) selectGroup(grpNum);
+        const clearBtn = document.getElementById('btn-clear-room');
+        if (clearBtn) clearBtn.style.display = 'block';
+
+        // Firebase에서 방 상태 확인 → 대기실(phase 0) / 진행 중 분기
+        (async () => {
+          let currentPhase = -1;
+          try {
+            const snap = await getRoomRef(roomParam).get();
+            if (snap.exists()) currentPhase = snap.val().currentPhase ?? 0;
+          } catch {}
+
+          const rcInput = document.getElementById('room-code-input');
+          if (rcInput) { rcInput.value = roomParam; rcInput.readOnly = true; }
+          const status = document.getElementById('room-code-status');
+          const codeGroup = document.getElementById('room-code-group');
+
+          if (currentPhase === 0) {
+            // ── 대기실: 역할·조 선택 숨기고 이름만 입력 ──
+            qrLobbyMode = true;
+            const roleWrap = document.getElementById('role-grid')?.closest('.form-group');
+            if (roleWrap) roleWrap.style.display = 'none';
+            const groupWrap = document.getElementById('group-grid')?.closest('.form-group');
+            if (groupWrap) groupWrap.style.display = 'none';
+            if (codeGroup) codeGroup.style.display = 'none'; // 대기실은 방코드 자동 연결
+            const hint = document.getElementById('session-hint-text');
+            if (hint) { hint.style.display = ''; hint.innerHTML = `
+              <div style="background:#e8f4fd;border:1px solid #3498db;border-radius:8px;padding:12px 14px;text-align:left;line-height:1.6">
+                <strong>📌 ${grpNum}조 · 방 코드: ${roomParam}</strong><br>
+                <span style="font-size:13px;color:#444">이름만 입력하고 참가하세요.<br>모더레이터가 역할을 배정해 드립니다.</span>
+              </div>`; }
+            updateJoinBtn();
+          } else if (currentPhase > 0) {
+            // ── 단계 진행 중: 역할 선택 필요 ──
+            if (status) { status.style.color = '#27ae60'; status.textContent = `✅ 방 확인 완료 — ${grpNum}조 · ${currentPhase}단계 진행 중`; }
+            if (rcInput) { const vBtn = document.getElementById('room-code-verify-btn'); if (vBtn) vBtn.style.display = 'none'; }
+          } else {
+            // 방 없음 / 오류
+            if (status) { status.style.color = '#e67e22'; status.textContent = `방 코드: ${roomParam} — 이름과 역할을 선택 후 참가해 주세요.`; }
+          }
+        })();
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
