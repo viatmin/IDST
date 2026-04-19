@@ -45,12 +45,12 @@
   .scenario-card-btn .sc-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
   .sc-badge { display: inline-block; border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: white; margin-bottom: 10px; }
   .home-footer { margin-top: 32px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
-  .btn-admin-mode {
+  .btn-tutorial {
     background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.3);
     color: white; border-radius: 8px; padding: 10px 20px; font-size: 13px;
     cursor: pointer; font-family: inherit; transition: all 0.2s;
   }
-  .btn-admin-mode:hover { background: rgba(255,255,255,0.22); }
+  .btn-tutorial:hover { background: rgba(255,255,255,0.22); }
 
   /* ── LOGIN SCREEN ── */
   #screen-login {
@@ -667,7 +667,7 @@
     <!-- Dynamic -->
   </div>
   <div class="home-footer">
-    <a class="btn-admin-mode" href="모더레이터_튜토리얼.html" target="_blank" rel="noopener" style="text-decoration:none">📖 모더레이터 튜토리얼</a>
+    <a class="btn-tutorial" href="모더레이터_튜토리얼.html" target="_blank" rel="noopener" style="text-decoration:none">📖 모더레이터 튜토리얼</a>
   </div>
 </div>
 
@@ -753,7 +753,8 @@
       <button class="fw-reset" onclick="resetFontSize()">초기화</button>
     </div>
   </div>
-  <div class="phase-bar">
+  <div class="phase-bar" id="phase-bar-container">
+    <!-- 단계 수에 따라 동적으로 생성됩니다 -->
     <div class="phase-step" id="step-0"><span class="step-num">0</span>대기실</div>
     <div class="phase-step" id="step-1"><span class="step-num">1</span>1단계</div>
     <div class="phase-step" id="step-2"><span class="step-num">2</span>2단계</div>
@@ -1271,12 +1272,12 @@ function renderHomeScenarios() {
 // ═══════════════════════════════════════════════════════
 const firebaseConfig = {
   apiKey: "AIzaSyC8KDLecYY5kNGsXxflRgP8-PP_S-DIU54",
-  authDomain: "infectious-disease-simul-e658f.firebaseapp.com",
-  databaseURL: "https://infectious-disease-simul-e658f-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "infectious-disease-simul-e658f",
-  storageBucket: "infectious-disease-simul-e658f.firebasestorage.app",
-  messagingSenderId: "746776461566",
-  appId: "1:746776461566:web:181f03437230510d66a5af"
+  authDomain: "idst-84e4f.firebaseapp.com",
+  databaseURL: "https://idst-84e4f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "idst-84e4f",
+  storageBucket: "idst-84e4f.firebasestorage.app",
+  messagingSenderId: "1019780815428",
+  appId: "1:1019780815428:web:3730e229889a21eaa33a11"
 };
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
@@ -1910,7 +1911,20 @@ function renderExercise() {
   applySituationFontSize(); // 저장된 글씨 크기 적용
 }
 function updatePhaseBar(state) {
-  for (let i = 0; i <= 4; i++) {
+  const bar = document.getElementById('phase-bar-container');
+  if (!bar) return;
+  const total = ACTIVE_PHASES.length || 3;
+  const finalStep = total + 1;
+  // 단계 수가 바뀌었으면 HTML 재생성
+  if (bar.querySelectorAll('.phase-step').length !== total + 2) {
+    bar.innerHTML =
+      `<div class="phase-step" id="step-0"><span class="step-num">0</span>대기실</div>` +
+      ACTIVE_PHASES.map((p, i) =>
+        `<div class="phase-step" id="step-${i+1}"><span class="step-num">${i+1}</span>${i+1}단계</div>`
+      ).join('') +
+      `<div class="phase-step" id="step-${finalStep}"><span class="step-num">${finalStep}</span>💡 피드백</div>`;
+  }
+  for (let i = 0; i <= finalStep; i++) {
     const el = document.getElementById(`step-${i}`);
     if (!el) continue;
     el.classList.remove('active','done','feedback');
@@ -1923,18 +1937,20 @@ function updatePhaseBar(state) {
 function updatePhaseBadge(state) {
   const badge = document.getElementById('phase-badge');
   if (!badge) return;
+  const total = ACTIVE_PHASES.length || 3;
   if (state.currentPhase === 0) badge.textContent = '대기 중';
-  else if (state.currentPhase <= 3) badge.textContent = state.showingFeedback ? `${state.currentPhase}단계 피드백` : `${state.currentPhase}단계`;
+  else if (state.currentPhase <= total) badge.textContent = state.showingFeedback ? `${state.currentPhase}단계 피드백` : `${state.currentPhase}단계`;
   else badge.textContent = '최종 피드백';
 }
 function renderBody(state) {
   const body = document.getElementById('ex-body');
   if (!body) return;
+  const total = ACTIVE_PHASES.length || 3;
   if (state.currentPhase === 0) renderLobby(body, state);
-  else if (state.currentPhase >= 1 && state.currentPhase <= 3) {
+  else if (state.currentPhase >= 1 && state.currentPhase <= total) {
     if (state.showingFeedback) renderPhaseFeedback(body, state);
     else renderPhase(body, state);
-  } else if (state.currentPhase === 4) renderFeedbackTransition();
+  } else if (state.currentPhase === total + 1) renderFeedbackTransition();
 }
 
 function renderLobby(body, state) {
@@ -1977,7 +1993,7 @@ function renderLobby(body, state) {
         </div>
       </div>
       <button class="btn-next-phase" style="margin-top:10px;width:100%;padding:14px" onclick="startPhaseWithTimer(1)">
-        ▶ 1단계 시작 — ${ACTIVE_PHASES[0] ? ACTIVE_PHASES[0].title : ''}
+        ▶ 1단계 시작
       </button>
       <button onclick="leaveToLogin()" style="margin-top:10px;width:100%;padding:11px;background:none;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--muted);cursor:pointer;font-family:inherit;transition:all 0.2s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">← 조 선택 화면으로 돌아가기</button>
     </div></div>`;
@@ -2790,18 +2806,35 @@ function buildInlineFeedbackHtml(phase, phaseResponses, participants) {
   const phaseScores = (state.scores && state.scores[`phase${phaseNum}`]) || {};
   const isModerator = myRole === '모더레이터';
 
-  const cards = sortRolesForDisplay(getActiveRoles(phase).filter(r => r !== '모더레이터'), participants).flatMap(role => {
+  const INLINE_ROLE_SHORT = { '담임교사':'담임', '보건(담당)교사':'보건', '영양(교)사':'영양', '행정실':'행정실', '교장/교감':'교장/교감', '교육(지원)청':'교육청', '유관기관':'유관기관' };
+  const INLINE_ROLE_ORDER = ['담임교사', '보건(담당)교사', '영양(교)사', '행정실', '교장/교감', '교육(지원)청', '유관기관'];
+
+  const activeRolesInline = getActiveRoles(phase).filter(r => r !== '모더레이터');
+  const filterRolesInline = [...activeRolesInline]
+    .filter(r => phase.missions[getBaseRole(r)])
+    .sort((a, b) => {
+      const ai = INLINE_ROLE_ORDER.indexOf(a), bi = INLINE_ROLE_ORDER.indexOf(b);
+      return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+    });
+
+  const inlineFilterBar = `<div class="fb-filter-bar" id="inline-score-filter-bar">
+    <button class="fb-filter-btn inline-score-btn active" data-filter="all" onclick="filterInlineScoreCards('all')">전체</button>
+    ${filterRolesInline.map(r => `<button class="fb-filter-btn inline-score-btn" data-filter="${r}" onclick="filterInlineScoreCards('${r}')">${INLINE_ROLE_SHORT[r]||r}</button>`).join('')}
+  </div>`;
+
+  const cards = sortRolesForDisplay(activeRolesInline, participants).flatMap(role => {
     const mission = phase.missions[getBaseRole(role)];
     if (!mission) return [];
     const entries = getRoleEntries(phaseResponses, participants, role);
     return entries.map(e => {
       const savedChecks = phaseScores[safeFirebaseKey(e.key)] ?? null;
-      return buildManualScoreCard(phase, phaseNum, {...e, role}, savedChecks, isModerator);
+      return `<div class="inline-score-card-wrap" data-role="${role}">${buildManualScoreCard(phase, phaseNum, {...e, role}, savedChecks, isModerator)}</div>`;
     });
   }).join('');
 
   return `<div style="margin-top:24px;padding-top:20px;border-top:2px solid var(--border)">
-    <h3 style="font-size:15px;font-weight:700;margin-bottom:14px">📊 피드백 — ${isModerator?'모더레이터 채점':'채점 결과'}</h3>
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">📊 피드백 — ${isModerator?'모더레이터 채점':'채점 결과'}</h3>
+    ${inlineFilterBar}
     <div class="fb-grid">${cards}</div>
   </div>`;
 }
@@ -2812,7 +2845,7 @@ function renderPhaseFeedback(body, state) {
   const phaseKey = `phase${phaseNum}`;
   const phaseResponses = (state.responses || {})[phaseKey] || {};
   const phaseScores = (state.scores && state.scores[phaseKey]) || {};
-  const isLast = phaseNum === 3;
+  const isLast = phaseNum === (ACTIVE_PHASES.length || 3);
   const isModerator = myRole === '모더레이터';
 
   // ✅ 수정: roleHistory 기반으로 해당 단계 당시 역할로 participants 재구성
@@ -2852,23 +2885,15 @@ function renderPhaseFeedback(body, state) {
   const orderedFbEntries = isModerator ? allFbEntries : [...allFbEntries.filter(c => c.isMe), ...allFbEntries.filter(c => !c.isMe)];
 
   const ROLE_SHORT = { '담임교사':'담임', '보건(담당)교사':'보건', '영양(교)사':'영양', '행정실':'행정실', '교장/교감':'교장/교감', '교육(지원)청':'교육청', '유관기관':'유관기관' };
-  let filterBarHtml = '';
-  let cards = '';
-  if (!isModerator) {
-    const filterRoles = sortedRolesF.filter(r => phase.missions[getBaseRole(r)]);
-    filterBarHtml = `<div class="fb-filter-bar" id="fb-filter-bar">
-      <button class="fb-filter-btn active" data-filter="all" onclick="filterFbCards('all')">전체</button>
-      <button class="fb-filter-btn" data-filter="me" onclick="filterFbCards('me')">나</button>
-      ${filterRoles.map(r => `<button class="fb-filter-btn" data-filter="${r}" onclick="filterFbCards('${r}')">${ROLE_SHORT[r]||r}</button>`).join('')}
-    </div>`;
-    cards = orderedFbEntries.map(c =>
-      `<div class="fb-card-wrap" data-role="${c.role}" data-is-me="${c.isMe}">${buildManualScoreCard(phase, phaseNum, {...c.entry, role: c.role}, c.savedChecks, isModerator, myPhaseKey)}</div>`
-    ).join('');
-  } else {
-    cards = orderedFbEntries.map(c =>
-      buildManualScoreCard(phase, phaseNum, {...c.entry, role: c.role}, c.savedChecks, isModerator, myPhaseKey)
-    ).join('');
-  }
+  const filterRoles = sortedRolesF.filter(r => phase.missions[getBaseRole(r)]);
+  const filterBarHtml = `<div class="fb-filter-bar" id="fb-filter-bar">
+    <button class="fb-filter-btn active" data-filter="all" onclick="filterFbCards('all')">전체</button>
+    ${!isModerator ? `<button class="fb-filter-btn" data-filter="me" onclick="filterFbCards('me')">나</button>` : ''}
+    ${filterRoles.map(r => `<button class="fb-filter-btn" data-filter="${r}" onclick="filterFbCards('${r}')">${ROLE_SHORT[r]||r}</button>`).join('')}
+  </div>`;
+  const cards = orderedFbEntries.map(c =>
+    `<div class="fb-card-wrap" data-role="${c.role}" data-is-me="${c.isMe}">${buildManualScoreCard(phase, phaseNum, {...c.entry, role: c.role}, c.savedChecks, isModerator, myPhaseKey)}</div>`
+  ).join('');
 
   const nextPhaseDur = !isLast && ACTIVE_PHASES[phaseNum] ? Math.round(ACTIVE_PHASES[phaseNum].duration / 60) : 5;
   const modControls = myRole === '모더레이터' ? `
@@ -2911,7 +2936,9 @@ function renderPhaseFeedback(body, state) {
 }
 
 function filterFbCards(filter) {
-  document.querySelectorAll('.fb-filter-btn').forEach(btn => {
+  // #fb-filter-bar 내 버튼만 active 토글 (인라인 채점 필터와 분리)
+  const bar = document.getElementById('fb-filter-bar');
+  if (bar) bar.querySelectorAll('.fb-filter-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.filter === filter);
   });
   document.querySelectorAll('.fb-card-wrap').forEach(wrap => {
@@ -2922,6 +2949,17 @@ function filterFbCards(filter) {
     } else {
       wrap.style.display = wrap.dataset.role === filter ? '' : 'none';
     }
+  });
+}
+
+function filterInlineScoreCards(filter) {
+  // 인라인 채점 필터 (훈련 진행 중 모더레이터 채점 섹션)
+  const bar = document.getElementById('inline-score-filter-bar');
+  if (bar) bar.querySelectorAll('.inline-score-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filter);
+  });
+  document.querySelectorAll('.inline-score-card-wrap').forEach(wrap => {
+    wrap.style.display = (filter === 'all' || wrap.dataset.role === filter) ? '' : 'none';
   });
 }
 
@@ -3223,11 +3261,12 @@ function nextPhase() {
     saveState(state); broadcast('PHASE_CHANGE', {}); renderExercise();
   } else {
     const next = state.currentPhase + 1;
-    if (next > 4) return;
-    if (next <= 3) { startPhase(next); }
+    const total = ACTIVE_PHASES.length || 3;
+    if (next > total + 1) return;
+    if (next <= total) { startPhase(next); }
     else {
-      state.currentPhase = 4; state.timerRunning = false; state.showingFeedback = false;
-      saveState(state); broadcast('PHASE_CHANGE', { phase: 4 }); renderExercise();
+      state.currentPhase = total + 1; state.timerRunning = false; state.showingFeedback = false;
+      saveState(state); broadcast('PHASE_CHANGE', { phase: total + 1 }); renderExercise();
     }
   }
 }
@@ -3301,7 +3340,7 @@ function renderFeedback() {
   const responses = state.responses || {};
   const fb = document.getElementById('fb-body');
   let html = `<div class="fb-summary">
-    ${myRole === '모더레이터' ? `<button class="btn-prev-phase" style="margin-bottom:14px" onclick="goBackFromFeedback()">◀ 3단계로 돌아가기</button><br>` : ''}
+    ${myRole === '모더레이터' ? `<button class="btn-prev-phase" style="margin-bottom:14px" onclick="goBackFromFeedback()">◀ ${ACTIVE_PHASES.length}단계로 돌아가기</button><br>` : ''}
     <h3>훈련 완료 — 피드백 및 토의 시간 (5분)</h3>
     <p>아래 각 역할별 작성 내용을 정답 키워드와 비교하여 누락된 항목을 확인하고, 우리 학교 상황에 맞게 보완할 점을 모더레이터 주도하에 함께 토의합니다.</p>
   </div>`;

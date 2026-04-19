@@ -307,12 +307,12 @@
 // ═══════════════════════════════════════════════════════
 const firebaseConfig = {
   apiKey: "AIzaSyC8KDLecYY5kNGsXxflRgP8-PP_S-DIU54",
-  authDomain: "infectious-disease-simul-e658f.firebaseapp.com",
-  databaseURL: "https://infectious-disease-simul-e658f-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "infectious-disease-simul-e658f",
-  storageBucket: "infectious-disease-simul-e658f.firebasestorage.app",
-  messagingSenderId: "746776461566",
-  appId: "1:746776461566:web:181f03437230510d66a5af"
+  authDomain: "idst-84e4f.firebaseapp.com",
+  databaseURL: "https://idst-84e4f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "idst-84e4f",
+  storageBucket: "idst-84e4f.firebasestorage.app",
+  messagingSenderId: "1019780815428",
+  appId: "1:1019780815428:web:3730e229889a21eaa33a11"
 };
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
@@ -704,6 +704,8 @@ function renderAdminEditor(sc, idx) {
                 onkeydown="if(event.key==='Enter'){event.preventDefault();addKeyword('${kwKey}')}">
               <button type="button" onclick="addKeyword('${kwKey}')"
                 style="padding:6px 12px;background:var(--primary);color:white;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">추가</button>
+              <button type="button" onclick="clearAllKeywords('${kwKey}')"
+                style="padding:6px 10px;background:white;color:#c0392b;border:1.5px solid #c0392b;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">전체 삭제</button>
             </div>
           </div>
         </div>`;
@@ -731,7 +733,8 @@ function renderAdminEditor(sc, idx) {
           <div class="role-checkbox-group">${roleCheckboxes}</div>
         </div>
         ${missionSections}
-        <div style="text-align:right;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
+          <button type="button" onclick="deletePhase(${idx},${pi})" style="padding:7px 16px;background:white;color:#c0392b;border:1.5px solid #c0392b;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑 이 단계 삭제</button>
           <button type="button" onclick="toggleAdminPhase(${pi})" style="padding:7px 18px;background:white;color:var(--muted);border:1.5px solid var(--border);border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">▲ ${p.id}단계 접기</button>
         </div>
       </div>
@@ -751,6 +754,11 @@ function renderAdminEditor(sc, idx) {
     <div class="admin-section">
       <h2>📝 단계별 내용 편집 <small style="font-size:12px;font-weight:400;color:var(--muted)">— Ctrl+S 로 저장</small></h2>
       ${phaseSections}
+      <div style="margin-top:10px">
+        <button type="button" onclick="addPhase(${idx})"
+          style="width:100%;padding:11px;background:#f0fdf4;color:#27ae60;border:2px dashed #6fcf97;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background 0.15s"
+          onmouseover="this.style.background='#e0f8ec'" onmouseout="this.style.background='#f0fdf4'">＋ 단계 추가</button>
+      </div>
     </div>
     <div style="display:flex;align-items:center;gap:0;padding-bottom:40px">
       <button class="btn-admin-save" onclick="saveAdminScenario(${idx})">💾 저장 (Ctrl+S)</button>
@@ -799,6 +807,102 @@ function refreshKeywordTags(kwKey) {
   container.innerHTML = (adminKeywordState[kwKey] || []).map((kw, ki) =>
     `<span class="kw-admin-tag">${escapeHtmlAdmin(kw)}<button type="button" onclick="removeKeyword('${kwKey}',${ki})">×</button></span>`
   ).join('');
+}
+
+function clearAllKeywords(kwKey) {
+  if (!adminKeywordState[kwKey] || adminKeywordState[kwKey].length === 0) return;
+  if (!confirm('이 역할의 채점 키워드를 모두 삭제할까요?')) return;
+  adminKeywordState[kwKey] = [];
+  refreshKeywordTags(kwKey);
+}
+
+// 현재 에디터 DOM 값을 localStorage의 scenarios 배열에 반영 (Firebase 저장 없음)
+function syncEditorToLocal(idx) {
+  const scenarios = getScenarios();
+  const sc = scenarios[idx];
+  const nameEl = document.getElementById('admin-sc-name');
+  if (nameEl) sc.name = nameEl.value.trim() || sc.name;
+  const emojiEl = document.getElementById('admin-sc-emoji');
+  if (emojiEl) sc.emoji = emojiEl.value.trim() || sc.emoji;
+  const colorEl = document.getElementById('admin-sc-color');
+  if (colorEl) sc.color = colorEl.value;
+  const descEl = document.getElementById('admin-sc-desc');
+  if (descEl) sc.description = descEl.value.trim();
+  sc.phases.forEach((p, pi) => {
+    const titleEl = document.getElementById(`p${pi}-title`);
+    if (titleEl) p.title = titleEl.value.trim() || p.title;
+    const emojiEl2 = document.getElementById(`p${pi}-emoji`);
+    if (emojiEl2) p.emoji = emojiEl2.value.trim() || p.emoji;
+    const dateEl = document.getElementById(`p${pi}-date`);
+    if (dateEl) p.date = dateEl.value.trim();
+    const durEl = document.getElementById(`p${pi}-duration`);
+    if (durEl) p.duration = parseInt(durEl.value) || p.duration;
+    const sitEl = document.getElementById(`p${pi}-situation`);
+    if (sitEl) p.situation = sitEl.value.trim();
+    p.activeRoles = ALL_ROLES.filter(role => {
+      const safeRole = role.replace(/\//g, '-');
+      const el = document.getElementById(`p${pi}-role-${safeRole}`);
+      return el && el.checked;
+    });
+    ALL_ROLES.forEach(role => {
+      const safeRole = role.replace(/\//g, '-');
+      const promptEl = document.getElementById(`p${pi}-${safeRole}-prompt`);
+      const answerEl = document.getElementById(`p${pi}-${safeRole}-answer`);
+      const kwKey = 'p' + pi + '_' + role.replace(/\//g, '_');
+      if (promptEl || answerEl) {
+        if (!p.missions[role]) p.missions[role] = { prompt: '', answer: '', keywords: [] };
+        if (promptEl) p.missions[role].prompt = promptEl.value.trim();
+        if (answerEl) p.missions[role].answer = answerEl.value.trim();
+        p.missions[role].keywords = adminKeywordState[kwKey] || [];
+      }
+    });
+  });
+  localStorage.setItem('ttx_admin_scenarios', JSON.stringify(scenarios));
+  return scenarios;
+}
+
+function addPhase(idx) {
+  const scenarios = syncEditorToLocal(idx);
+  const sc = scenarios[idx];
+  const newId = sc.phases.length + 1;
+  sc.phases.push({
+    id: newId,
+    title: '새 단계',
+    emoji: '🆕',
+    color: '#2c3e50',
+    colorClass: `phase-${newId}-color`,
+    activeRoles: [],
+    date: '',
+    situation: '',
+    duration: 300,
+    missions: {}
+  });
+  localStorage.setItem('ttx_admin_scenarios', JSON.stringify(scenarios));
+  renderAdminEditor(sc, idx);
+  // 새로 추가된 단계 자동 펼치기 & 스크롤
+  setTimeout(() => {
+    const newPi = sc.phases.length - 1;
+    const body = document.getElementById(`phase-body-${newPi}`);
+    if (body && !body.classList.contains('open')) toggleAdminPhase(newPi);
+    body && body.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 50);
+}
+
+function deletePhase(idx, pi) {
+  const scenarios = getScenarios();
+  const sc = scenarios[idx];
+  if (sc.phases.length <= 1) {
+    alert('최소 1개의 단계는 있어야 합니다.');
+    return;
+  }
+  const phase = sc.phases[pi];
+  if (!confirm(`${phase.id}단계 "${phase.title}"을(를) 삭제할까요?\n이 단계의 모든 미션과 키워드가 사라집니다.`)) return;
+  const updated = syncEditorToLocal(idx);
+  updated[idx].phases.splice(pi, 1);
+  // 단계 ID 재정렬
+  updated[idx].phases.forEach((p, i) => { p.id = i + 1; });
+  localStorage.setItem('ttx_admin_scenarios', JSON.stringify(updated));
+  renderAdminEditor(updated[idx], idx);
 }
 
 function saveAdminScenario(idx) {
