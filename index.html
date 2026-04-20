@@ -1255,7 +1255,7 @@ function leaveToLogin() {
 //  HOME RENDER
 // ═══════════════════════════════════════════════════════
 function renderHomeScenarios() {
-  const scenarios = getScenarios();
+  const scenarios = getScenarios().filter(sc => !sc.hidden);
   const grid = document.getElementById('scenario-grid');
   grid.innerHTML = scenarios.map(sc => `
     <button class="scenario-card-btn" onclick="selectScenario('${sc.id}')">
